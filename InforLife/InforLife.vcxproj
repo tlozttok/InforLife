@@ -77,10 +77,12 @@
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <CudaCompile Include="Background.cu" />
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Background.cuh" />
+    <ClInclude Include="Function.cuh" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Front.cpp" />
