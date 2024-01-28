@@ -2,7 +2,7 @@
 #include "Function.cuh"
 typedef float (*f2f)(float);
 
-__device__ int pos2offset(int x, int y, int c, int size, int channel)
+__device__ int pos2offset(int x, int y, int c, int size)
 {
 	int s = 0;
 	int c_size = size * size;
@@ -12,7 +12,7 @@ __device__ int pos2offset(int x, int y, int c, int size, int channel)
 	return s;
 }
 
-__device__ int3 offset2pos(int offset, int size, int channel)
+__device__ int3 offset2pos(int offset, int size)
 {
 	int c_size = size * size;
 	int3 p = int3();
@@ -22,24 +22,26 @@ __device__ int3 offset2pos(int offset, int size, int channel)
 	return p;
 }
 
-__device__ void conv(float* data, float* kernel, int k_size, int channel, int x, int y, int d_size, float* result)
+__device__ void conv(float* data, float* kernel, float* sum, int k_size, int channel, int x, int y, int d_size, float* result)
 {
-	int d_offset = pos2offset(x - k_size, y - k_size, 0, d_size, channel);
+	int d_offset = pos2offset(x - k_size, y - k_size, 0, d_size);
 	int k_offset = 0;
 	int dc_size = d_size * d_size;
-	int kc_size = k_size * k_size;
+	int kc_size = (k_size*2+1) * (k_size*2+1);
 	for (int c = 0; c < channel; c++) {
 		float r = 0;
 		for (int ix = x - k_size; ix <= x + k_size; ix++) {
 			for (int iy = y - k_size; iy <= y + k_size; iy++) {
-				r += data[d_offset] * kernel[k_offset];
+				if (ix >= 0 && ix < d_size && iy >= 0 && iy < d_size) {
+					r += data[d_offset] * kernel[k_offset];
+				}
 				d_offset++;
 				k_offset++;
 			}
 			d_offset += d_size;
-			k_offset += k_size;
+			k_offset += k_size*2+1;
 		}
-		result[c] = r;
+		result[c] = r / sum[c];
 		d_offset += dc_size;
 		k_offset += kc_size;
 	}
@@ -71,21 +73,86 @@ __device__ void respond(float* data, int channel, ActionPair RF) {
 }
 
 
-__global__ void step_compute(float* data, gene* gene, float* gene_mask, float* data_b, float* data_d, int size, int channel) 
-{
-
+__global__ void step_compute(
+	float* data,
+	gene** gene_mask, 
+	float* dynamic, 
+	float delta_t,
+	bool* action_mask, 
+	float* data_b, 
+	float* data_d, 
+	float* n_data,
+	int size, 
+	int channel
+) {
+	int id = threadIdx.x;
+	int num = size * size;
+	int amount = int(num / id + 1);
+	for (int i = id * amount; i < id * (amount + 1); i++) {
+		int3 pos = offset2pos(i, size);
+		gene* g = gene_mask[i];
+		float* conv_r = 0;
+		cudaMalloc((void**)&conv_r, sizeof(float) * channel);//卷积结果的内存
+		conv(data, g->conv_kernel, g->kernel_sum, g->k_length, channel, pos.x, pos.y, size, conv_r);//卷积
+		activate(conv_r, channel, sin_af);//激活
+		float* mat_r = 0;
+		cudaMalloc((void**)&mat_r, sizeof(float) * channel);//矩阵变换结果的内存
+		matmul(conv_r, g->FCL_matrix, size, size, mat_r);//矩阵乘法
+		respond(mat_r, channel, g->step);//得到结果
+		for (int c = 0; c < channel; c++) {
+			n_data[i + c * num] = mat_r[c]*delta_t+dynamic[i + c * num];
+		}
+		if (action_mask[i]) {
+			float born = 0;
+			float death = 0;
+			matmul(conv_r, g->weight, channel, 1, &born);//细胞动作计算
+			death = born;
+			respond(&born, 1, g->born);
+			respond(&death, 1, g->death);
+			death -= g->limit;
+			born -= g->limit;
+			data_b[i] = born;
+			data_d[i] = death;
+		}
+	}
 }
 
-Env::Env(int size, int channel):size(size)
+Env::Env(int size, int channel, Cells cells):size(size),channel(channel),cells(cells)
 {
-	cudaStatus = cudaMallocManaged((void**)&data, 4 * size * size * channel);
-	cudaStatus = cudaMallocManaged((void**)&data_b, 4 * size * size);
-	cudaStatus = cudaMallocManaged((void**)&data_d, 4 * size * size);
-	cudaStatus = cudaMallocManaged((void**)&gene_mask, 4 * size * size);
-	
+	cudaStatus = cudaMalloc((void**)&data, sizeof(float) * size * size * channel);
+	cudaStatus = cudaMalloc((void**)&data_b, sizeof(float) * size * size);
+	cudaStatus = cudaMalloc((void**)&data_d, sizeof(float) * size * size);
+	cudaStatus = cudaMalloc((void**)&gene_mask, sizeof(gene*) * size * size);
+	cudaStatus = cudaMalloc((void**)&dynamic, sizeof(float) * size * size);
+	cudaStatus = cudaMalloc((void**)&action_mask, sizeof(bool) * size * size);
 }
 
 void Env::step()
 {
-
+	if (cell_territory_lock.try_lock())//尝试读取数据
+	{
+		cudaMemcpy(gene_mask, cells.get_gene_mask(), sizeof(gene*) * size * size,cudaMemcpyHostToDevice);
+		cudaMemcpy(action_mask, cells.get_action_mask(), sizeof(bool) * size * size, cudaMemcpyHostToDevice);
+		cell_territory_lock.unlock();
+	}
+	if (dynamic_lock.try_lock())//尝试读取数据
+	{
+		cudaMemcpy(dynamic, cells.get_dynamic(), sizeof(float) * size * size, cudaMemcpyHostToDevice);
+		dynamic_lock.unlock();
+	}
+	float* ndata = 0;//旧数据保留以供其他线程读取
+	float* n_data_b = 0;
+	float* n_data_d = 0;
+	cudaStatus = cudaMallocManaged((void**)&ndata, sizeof(float) * size * size * channel);
+	cudaStatus = cudaMallocManaged((void**)&n_data_b, sizeof(float) * size * size);
+	cudaStatus = cudaMallocManaged((void**)&n_data_d, sizeof(float) * size * size);
+	step_compute<<<1,256>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel);
+	gpu_data_lock.lock();//坚持覆写数据
+	cudaFree(data);
+	cudaFree(data_b);
+	cudaFree(data_d);
+	data = ndata;
+	data_b = n_data_b;
+	data_d = n_data_d;
+	gpu_data_lock.unlock();
 }
