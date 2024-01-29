@@ -24,26 +24,22 @@ __device__ int3 offset2pos(int offset, int size)
 
 __device__ void conv(float* data, float* kernel, float* sum, int k_size, int channel, int x, int y, int d_size, float* result)//ÐèÖØ×ö
 {
-	int d_offset = pos2offset(x - k_size, y - k_size, 0, d_size);
+	int d_offset;
 	int k_offset = 0;
-	int dc_size = d_size * d_size;
-	int kc_size = (k_size*2+1) * (k_size*2+1);
+	int r;
 	for (int c = 0; c < channel; c++) {
-		float r = 0;
-		for (int ix = x - k_size; ix <= x + k_size; ix++) {
-			for (int iy = y - k_size; iy <= y + k_size; iy++) {
+		r = 0;
+		for (int iy = y - k_size; iy < y + k_size; iy++) {
+			d_offset = pos2offset(x - k_size, iy, c, d_size);
+			for (int ix = x - k_size; ix < x + k_size; ix++) {
 				if (ix >= 0 && ix < d_size && iy >= 0 && iy < d_size) {
 					r += data[d_offset] * kernel[k_offset];
 				}
 				d_offset++;
 				k_offset++;
 			}
-			d_offset += d_size;
-			k_offset += k_size*2+1;
 		}
 		result[c] = r / sum[c];
-		d_offset += dc_size;
-		k_offset += kc_size;
 	}
 }
 

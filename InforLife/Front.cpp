@@ -147,8 +147,8 @@ void nearest_detect(Cell** gene_belong, int size, gene** result)
 	float min_distance;
 	Cell* nearest_cell;
 	int i = 0;
-	for (int ix = 0; ix < size; ix++) {
-		for (int iy = 0; iy < size; iy++) {
+	for (int iy = 0; iy < size; iy++) {
+		for (int ix = 0; ix < size; ix++) {
 			min_distance = INFINITY;
 			nearest_cell = nullptr;
 			for (int ic = 0; ic < GENE_PLACE_NUM; ic++) {

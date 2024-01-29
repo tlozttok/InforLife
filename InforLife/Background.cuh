@@ -10,7 +10,6 @@ using std::rand;
 constexpr int GENE_PLACE_NUM = 8;
 constexpr int ACTION_PAIR_NUM = 3;
 constexpr int DYNAMIC_LEVEL = 2;
-gene* DEFAULT_GENE;
 float randf(float min, float max)
 {
 	float r = rand() % 10000 / 10000.0;
@@ -65,6 +64,8 @@ struct gene
 	float limit;
 	DynamicData d_data;
 };
+
+gene* DEFAULT_GENE;
 
 struct divide_data
 {
