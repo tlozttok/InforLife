@@ -10,7 +10,7 @@ using std::rand;
 constexpr int GENE_PLACE_NUM = 8;
 constexpr int ACTION_PAIR_NUM = 3;
 constexpr int DYNAMIC_LEVEL = 2;
-
+gene* DEFAULT_GENE;
 float randf(float min, float max)
 {
 	float r = rand() % 10000 / 10000.0;
@@ -45,6 +45,7 @@ struct DynamicData
 {
 	float* A;
 	float* phi;
+	int level;
 	DynamicData();
 	~DynamicData();
 };
@@ -62,6 +63,15 @@ struct gene
 	ActionPair born;
 	ActionPair death;
 	float limit;
+	DynamicData d_data;
+};
+
+struct divide_data
+{
+	float prob;
+	float single_prob;
+	float drift_mean;//没有意外的话就是0了
+	float drift_std;
 };
 
 class Cell
@@ -76,8 +86,10 @@ public:
 	~Cell();
 	void mark_territory(float r);
 	void mark_territory(float r, Cell** gene_belong, int size);
+	float get_dynamic(float time);
 	int X() { return x; };
 	int Y() { return y; };
+	gene* get_gene() { return g; };
 };
 
 class Cells
@@ -90,6 +102,7 @@ private:
 	bool* action_mask;//可被其他线程读
 	float* dynamic;//可被其他线程读
 	vector<Cell*> cell_group;
+	divide_data d_data;
 public:
 	int size;
 	int channel;

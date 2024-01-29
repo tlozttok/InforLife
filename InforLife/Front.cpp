@@ -1,6 +1,7 @@
 #include "Background.cuh"
 constexpr auto PI = 3.14159265358979323846;
 
+
 int pos2offset(int x, int y, int c, int size, int channel)
 {
 	int s = 0;
@@ -45,6 +46,7 @@ ActionPair::~ActionPair() { delete[] means; delete[] stds; }
 
 DynamicData::DynamicData()
 {
+	level = DYNAMIC_LEVEL;
 	A = new float[DYNAMIC_LEVEL];
 	phi = new float[DYNAMIC_LEVEL];
 	for (int i = 0; i < DYNAMIC_LEVEL; i++) {
@@ -101,6 +103,15 @@ void Cell::mark_territory(float r, Cell** gene_belong, int size)
 	}
 }
 
+float Cell::get_dynamic(float time)
+{
+	float d = 0.0f;
+	for (int i = 0; i < g->d_data.level; i++) {
+		d += g->d_data.A[i] * (sin(time * 2 * PI + g->d_data.phi[i]));
+	}
+	return d;
+}
+
 Cells::Cells(int size,int channel) : size(size),channel(channel) { 
 	env_length = size * size;
 	gene_belong = new Cell* [env_length * GENE_PLACE_NUM]();
@@ -133,7 +144,32 @@ void Cells::generate_gene_belong(float r)
 
 void nearest_detect(Cell** gene_belong, int size, gene** result)
 {
-
+	float min_distance;
+	Cell* nearest_cell;
+	int i = 0;
+	for (int ix = 0; ix < size; ix++) {
+		for (int iy = 0; iy < size; iy++) {
+			min_distance = INFINITY;
+			nearest_cell = nullptr;
+			for (int ic = 0; ic < GENE_PLACE_NUM; ic++) {
+				Cell* cell = gene_belong[i * GENE_PLACE_NUM + ic];
+				if (cell != nullptr) {
+					float distance = (cell->X() - ix) * (cell->X() - ix) + (cell->Y() - iy) * (cell->Y() - iy);
+					if (distance < min_distance) {
+						min_distance = distance;
+						nearest_cell = cell;
+					}
+				}
+			}
+			if (nearest_cell == nullptr) {
+				result[i] = DEFAULT_GENE;
+			}
+			else {
+				result[i] = nearest_cell->get_gene();
+			}
+			i++;
+		}
+	}
 }
 
 void Cells::generate_g_mask(float r)
@@ -185,12 +221,24 @@ void Cells::generate_action_mask()
 
 void Cells::generate_dynamic(float time)
 {
-
+	float *n_dynamic = new float[env_length]();
+	for (auto cell : cell_group) {
+		int id = cell->Y() * size + cell->X();
+		n_dynamic[id] = cell->get_dynamic(time);
+	}
+	dynamic_lock.lock();
+	delete[] dynamic;
+	dynamic = n_dynamic;
+	dynamic_lock.unlock();
 }
 
 void Cells::divide_cell()
 {
+	for (int i = 0; i < size * size; i++) {
+		if (randf(0, 1) < d_data.prob) {
 
+		}
+	}
 }
 
 void Cells::step()

@@ -22,7 +22,7 @@ __device__ int3 offset2pos(int offset, int size)
 	return p;
 }
 
-__device__ void conv(float* data, float* kernel, float* sum, int k_size, int channel, int x, int y, int d_size, float* result)
+__device__ void conv(float* data, float* kernel, float* sum, int k_size, int channel, int x, int y, int d_size, float* result)//ĞèÖØ×ö
 {
 	int d_offset = pos2offset(x - k_size, y - k_size, 0, d_size);
 	int k_offset = 0;
