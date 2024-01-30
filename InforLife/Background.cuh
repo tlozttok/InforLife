@@ -16,7 +16,8 @@ float randf(float min, float max)
 	return min + r * (max - min);
 }
 
-
+std::random_device rd;
+std::mt19937 random_gen(rd());
 
 class NonLinearMap
 {
@@ -58,11 +59,14 @@ struct gene
 	int channel;
 	float* FCL_matrix;//顺序[h,w]
 	float* weight;
+	ActionPair conv_kernel_generater;
 	ActionPair step;//用两个高斯就好了
 	ActionPair born;
 	ActionPair death;
 	float limit;
 	DynamicData d_data;
+	gene();
+	~gene();
 };
 
 gene* DEFAULT_GENE;
@@ -70,6 +74,7 @@ gene* DEFAULT_GENE;
 struct divide_data
 {
 	float prob;
+	float mutant_prob;
 	float single_prob;
 	float drift_mean;//没有意外的话就是0了
 	float drift_std;

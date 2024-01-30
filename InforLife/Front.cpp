@@ -232,10 +232,84 @@ void Cells::generate_dynamic(float time)
 	dynamic_lock.unlock();
 }
 
+float gaussian(float x, float mean, float std) {
+	float coeff = 1.0f / (sqrtf(2.0f * PI) * std);//为了平衡
+	float exponent = expf(-0.5f * powf((x - mean) / std, 2));
+	return coeff * exponent;
+}
+
+float mutant(float x, float single_prob, std::normal_distribution<>& d)
+{
+	if (randf(0, 1) < single_prob) {
+		return x + d(random_gen);
+	}
+	else {
+		return x;
+	}
+}
+
+void array_mutant(const float* o_array, float* n_array, int length, float single_prob, std::normal_distribution<>& d)
+{
+	for (int i = 0; i < length; i++) {
+		n_array[i] = mutant(o_array[i], single_prob, d);
+	}
+}
+
+ActionPair ActionPair_mutant(const ActionPair a,float single_prob, std::normal_distribution<>& d)
+{
+	ActionPair na(a.num);
+	array_mutant(a.means, na.means, a.num, single_prob, d);
+	array_mutant(a.stds, na.stds, a.num, single_prob, d);
+	return na;
+}
+
+DynamicData Dynamic_mutant(const DynamicData dd, float single_prob, std::normal_distribution<>& d)
+{
+	DynamicData nd;
+	array_mutant(dd.A, nd.A, dd.level, single_prob, d);
+	array_mutant(dd.phi, nd.phi, dd.level, single_prob, d);
+	return nd;
+}
+
+void gene_mutant(const gene* parent, gene* n_gene, float single_prob, std::normal_distribution<>& d)
+{
+	array_mutant(parent->FCL_matrix, n_gene->FCL_matrix, parent->channel * parent->channel, single_prob, d);
+	array_mutant(parent->weight, n_gene->weight, parent->channel, single_prob, d);
+	n_gene->death = ActionPair_mutant(parent->death, single_prob,d);
+	n_gene->born = ActionPair_mutant(parent->born, single_prob,d);
+	n_gene->step = ActionPair_mutant(parent->step, single_prob,d);
+	n_gene->d_data = Dynamic_mutant(parent->d_data, single_prob,d);
+}
+
+gene* gene_mutant_cuda(const gene* parent,divide_data d_data)//不要传cpu数据进去
+{
+	gene* cpu_p_gene = new gene();
+	gene* cpu_n_gene = new gene();
+	gene* n_gene = 0;
+	std::normal_distribution<> d(d_data.drift_mean, d_data.drift_std);
+	cudaMemcpy(cpu_p_gene, parent, sizeof(gene), cudaMemcpyDeviceToHost);
+	gene_mutant(cpu_p_gene, cpu_n_gene, d_data.single_prob, d);
+	cudaMalloc((void**)&n_gene, sizeof(gene));
+	cudaMemcpy(n_gene, cpu_n_gene, sizeof(gene), cudaMemcpyHostToDevice);
+	delete cpu_p_gene;
+	delete cpu_n_gene;
+}
+
 void Cells::divide_cell()
 {
 	for (int i = 0; i < size * size; i++) {
-		if (randf(0, 1) < d_data.prob) {
+		if (generate_mask[i] != nullptr) {
+			if (randf(0, 1) < d_data.prob) {
+				gene* new_gene;
+				if (randf(0, 1) < d_data.mutant_prob) {
+					new_gene = gene_mutant_cuda(generate_mask[i], d_data);
+				}
+				else {
+					new_gene = generate_mask[i];
+				}
+				Cell* new_cell = new Cell(i % size, int(i / size + 1), this, new_gene);
+				cell_group.push_back(new_cell);
+			}
 
 		}
 	}
