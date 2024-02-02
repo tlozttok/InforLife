@@ -62,9 +62,9 @@ __device__ void matmul(float* data, float* mat, int width, int height, float* re
 	}
 }
 
-__device__ void respond(float* data, int channel, ActionPair RF) {
+__device__ void respond(float* data, int channel, ActionPair* RF) {
 	for (int i = 0; i < channel; i++) {
-		data[i] = mix_gaussian(data[i], RF);
+		data[i] = mix_gaussian_gpu(data[i], RF);
 	}
 }
 
@@ -94,7 +94,7 @@ __global__ void step_compute(
 		float* mat_r = 0;
 		cudaMalloc((void**)&mat_r, sizeof(float) * channel);//矩阵变换结果的内存
 		matmul(conv_r, g->FCL_matrix, size, size, mat_r);//矩阵乘法
-		respond(mat_r, channel, g->step);//得到结果
+		respond(mat_r, channel, &(g->step));//得到结果
 		for (int c = 0; c < channel; c++) {
 			n_data[i + c * num] = mat_r[c]*delta_t+dynamic[i + c * num];
 		}
@@ -103,8 +103,8 @@ __global__ void step_compute(
 			float death = 0;
 			matmul(conv_r, g->weight, channel, 1, &born);//细胞动作计算
 			death = born;
-			respond(&born, 1, g->born);
-			respond(&death, 1, g->death);
+			respond(&born, 1, &(g->born));
+			respond(&death, 1, &(g->death));
 			death -= g->limit;
 			born -= g->limit;
 			data_b[i] = born;
@@ -159,7 +159,7 @@ void Env::step()
 	cudaStatus = cudaMallocManaged((void**)&n_data_b, sizeof(float) * size * size);
 	cudaStatus = cudaMallocManaged((void**)&n_data_d, sizeof(float) * size * size);
 	step_compute<<<1,256>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel);
-	cudaThreadSynchronize();
+	cudaDeviceSynchronize();
 	gpu_data_lock.lock();//坚持覆写数据
 	cudaFree(data);
 	cudaFree(data_b);

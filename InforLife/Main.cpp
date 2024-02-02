@@ -1,10 +1,12 @@
 #include "Background.cuh"
+#include "DefaultPara.h"
+
+void init_default_gene();
 
 int main(int argc, char* argv[])
 {
 	Cells cell_group = Cells(ENV_SIZE, CHANNEL);
 	Env env = Env(ENV_SIZE, CHANNEL, &cell_group);
-	cell_group.set_env(&env);
 	init_default_gene();
 	Cell first = Cell(999, 999, &cell_group, DEFAULT_GENE);
 	cell_group.add_cell(&first);

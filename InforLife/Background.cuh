@@ -1,4 +1,7 @@
 #pragma once
+#ifndef BACKGROUND
+#define BACKGROUND
+
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <vector>
@@ -6,18 +9,13 @@
 #include <map>
 #include "vector_types.h"
 #include "lock.h"
-#include "DefaultPara.h"
 using std::map;
 using std::vector;
 using std::rand;
-float randf(float min, float max)
-{
-	float r = rand() % 10000 / 10000.0;
-	return min + r * (max - min);
-}
+float randf(float min, float max);
 
-std::random_device rd;
-std::mt19937 random_gen(rd());
+static std::random_device rd;
+static std::mt19937 random_gen(rd());
 
 class NonLinearMap
 {
@@ -71,7 +69,7 @@ struct gene
 	~gene();
 };
 
-gene* DEFAULT_GENE;
+static gene* DEFAULT_GENE;
 
 struct divide_data
 {
@@ -83,6 +81,8 @@ struct divide_data
 };
 
 constexpr divide_data DEFAULT_D_DATA = { 0.1,0.2,0.4,0.0,0.01 };
+
+class Cells;
 
 class Cell
 {
@@ -101,8 +101,6 @@ public:
 	gene* get_gene() { return g; };
 };
 
-class Env {};
-
 class Cells
 {
 private:
@@ -114,7 +112,6 @@ private:
 	float* dynamic;//可被其他线程读
 	vector<Cell*> cell_group;
 	divide_data d_data;
-	Env* env;
 	map<gene*, int> reference_count;
 	//辅助函数：
 
@@ -136,7 +133,6 @@ public:
 	Cells(int size,int channel);
 	~Cells();
 	void add_cell(Cell* c) { cell_group.push_back(c); };
-	void set_env(Env* e) { env = e; };
 	//数据获取函数：
 
 	gene** get_gene_mask() { return gene_mask; };
@@ -178,3 +174,7 @@ public:
 	float* get_data_b() { return data_b; };
 	float* get_data_d() { return data_d; };
 };
+
+float gaussian(float x, float mean, float std);
+
+#endif // !BACKGROUND

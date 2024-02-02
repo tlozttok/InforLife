@@ -1,10 +1,17 @@
 #include "Background.cuh"
+#include "DefaultPara.h"
 
 
 float gaussian(float x, float mean, float std) {
 	float coeff = 1.0f / (sqrtf(2.0f * PI ) * std);
 	float exponent = expf(-0.5f * powf((x - mean) / std, 2));
 	return coeff * exponent;
+}
+
+float randf(float min, float max)
+{
+	float r = rand() % 10000 / 10000.0;
+	return min + r * (max - min);
 }
 
 float mix_gaussian(float x, ActionPair RF) {
@@ -19,6 +26,7 @@ ActionPair::ActionPair()
 {
 	cudaMallocManaged((void**)&means, sizeof(float) * ACTION_PAIR_NUM);
 	cudaMallocManaged((void**)&stds, sizeof(float) * ACTION_PAIR_NUM);
+	num = ACTION_PAIR_NUM;
 	for (int i = 0; i < ACTION_PAIR_NUM; i++) {
 		means[i] = randf(0, 1);
 		stds[i] = randf(0, 0.1);
@@ -29,6 +37,7 @@ ActionPair::ActionPair(int pair_num)
 {
 	cudaMallocManaged((void**)&means, sizeof(float) * pair_num);
 	cudaMallocManaged((void**)&stds, sizeof(float) * pair_num);
+	num = pair_num;
 	for (int i = 0; i < pair_num; i++) {
 		means[i] = randf(0, 1);
 		stds[i] = randf(0, 0.1);
@@ -58,11 +67,11 @@ void generate_kernel(int k_length, float* kernel, ActionPair* src, int channel, 
 {
 	int id = 0;
 	for (int c = 0; c < channel; c++) {
-		int sum = 0;
+		float sum = 0;
 		for (int iy = -k_length; iy < k_length; iy++) {
 			for (int ix = -k_length; ix < k_length; ix++) {
-				float x = ix / k_length;
-				float y = iy / k_length;
+				float x = float(ix) / k_length;
+				float y = float(iy) / k_length;
 				float w = mix_gaussian(sqrt(x * x + y * y), src[c]);
 				sum += w;
 				kernel[id] = w;

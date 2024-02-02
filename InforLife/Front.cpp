@@ -1,4 +1,5 @@
 #include "Background.cuh"
+#include "DefaultPara.h"
 #include <algorithm>
 
 
@@ -30,12 +31,6 @@ void nearest_detect(Cell** gene_belong, int size, gene** result)
 			i++;
 		}
 	}
-}
-
-float gaussian(float x, float mean, float std) {
-	float coeff = 1.0f / (sqrtf(2.0f * PI) * std);
-	float exponent = expf(-0.5f * powf((x - mean) / std, 2));
-	return coeff * exponent;
 }
 
 float mutant(float x, float single_prob, std::normal_distribution<>& d)
