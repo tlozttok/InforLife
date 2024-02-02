@@ -10,8 +10,6 @@
 using std::map;
 using std::vector;
 using std::rand;
-constexpr auto PI = 3.14159265358979323846;
-constexpr int GENE_PLACE_NUM = 8;
 float randf(float min, float max)
 {
 	float r = rand() % 10000 / 10000.0;
@@ -46,6 +44,7 @@ struct ActionPair
 struct DynamicData
 {
 	float* A;
+	//弧度制
 	float* phi;
 	int level;
 	DynamicData();
@@ -117,36 +116,39 @@ private:
 	divide_data d_data;
 	Env* env;
 	map<gene*, int> reference_count;
+	//辅助函数：
+
+	void generate_gene_belong(float r);
+	//r应当和gene_belong的一样，在生成genemask后再调用
+	void generate_g_mask(float r);
+	void data_update_msg() { need_update = true; };
+	//主流程函数：
+
+	void divide_cell(float* data_b);
+	void cell_die(float* data_d);
+	void generate_gene_mask();
+	void generate_action_mask();
+
 public:
 	int size;
 	int channel;
 	int env_length;
 	Cells(int size,int channel);
 	~Cells();
+	void add_cell(Cell* c) { cell_group.push_back(c); };
 	void set_env(Env* e) { env = e; };
 	//数据获取函数：
 
 	gene** get_gene_mask() { return gene_mask; };
 	bool* get_action_mask() { return action_mask; };
 	float* get_dynamic() { return dynamic; };
-
 	//辅助函数：
 
 	void set_gene_belong(int x, int y, Cell* c);
-	void generate_gene_belong(float r);
-	//r应当和gene_belong的一样，在生成genemask后再调用
-	void generate_g_mask(float r);
-	void data_update_msg() { need_update = true; };
-
 	//主流程函数：
 
-	void generate_gene_mask();
-	void generate_action_mask();
 	//单独线程运行
 	void generate_dynamic(float time);
-	void divide_cell(float* data_b);
-	void cell_die(float* data_d);
-
 	//主循环函数：
 	
 	//传GPU数据进去
@@ -165,12 +167,12 @@ private:
 	float* dynamic;//顺序[c,h,w]，和data一样
 	float delta_t;
 	float time;
-	Cells cells;
+	Cells* cells;
 	vector<gene*>* gene_pool;//暂且不用
 public:
 	int const size;
 	int const channel;
-	Env(int size, int channel,Cells cells);
+	Env(int size, int channel,Cells* cells);
 	~Env();
 	void step();
 	float* get_data_b() { return data_b; };

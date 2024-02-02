@@ -61,7 +61,9 @@ void generate_kernel(int k_length, float* kernel, ActionPair* src, int channel, 
 		int sum = 0;
 		for (int iy = -k_length; iy < k_length; iy++) {
 			for (int ix = -k_length; ix < k_length; ix++) {
-				float w = mix_gaussian(sqrt(ix * ix + iy * iy), src[c]);
+				float x = ix / k_length;
+				float y = iy / k_length;
+				float w = mix_gaussian(sqrt(x * x + y * y), src[c]);
 				sum += w;
 				kernel[id] = w;
 				id++;
@@ -83,9 +85,10 @@ gene::gene() {
 	channel = CHANNEL;
 	cudaMallocManaged((void**)&conv_kernel, sizeof(float) * l);
 	cudaMallocManaged((void**)&kernel_sum, sizeof(float) * channel);
+	cudaMallocManaged((void**)&weight, sizeof(float) * channel);
 	cudaMallocManaged((void**)&FCL_matrix, sizeof(float) * channel * channel);
 	cudaMallocManaged((void**)&conv_kernel_generater, sizeof(ActionPair) * channel);
-	step = ActionPair();
+	step = ActionPair(STEP_ACTION_PARI_NUM);
 	born = ActionPair();
 	death = ActionPair();
 	d_data = DynamicData();

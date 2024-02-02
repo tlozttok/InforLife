@@ -113,7 +113,7 @@ __global__ void step_compute(
 	}
 }
 
-Env::Env(int size, int channel, Cells cells):size(size),channel(channel),cells(cells)
+Env::Env(int size, int channel, Cells* cells):size(size),channel(channel),cells(cells)
 {
 	cudaStatus = cudaMalloc((void**)&data, sizeof(float) * size * size * channel);
 	cudaStatus = cudaMalloc((void**)&data_b, sizeof(float) * size * size);
@@ -121,6 +121,12 @@ Env::Env(int size, int channel, Cells cells):size(size),channel(channel),cells(c
 	cudaStatus = cudaMalloc((void**)&gene_mask, sizeof(gene*) * size * size);
 	cudaStatus = cudaMalloc((void**)&dynamic, sizeof(float) * size * size);
 	cudaStatus = cudaMalloc((void**)&action_mask, sizeof(bool) * size * size);
+	cudaMemset(data, 0, sizeof(float) * size * size * channel);
+	cudaMemset(data_b, 0, sizeof(float) * size * size);
+	cudaMemset(data_d, 0, sizeof(float) * size * size);
+	cudaMemset(gene_mask, 0, sizeof(gene*) * size * size);
+	cudaMemset(dynamic, 0, sizeof(float) * size * size);
+	cudaMemset(action_mask, 0, sizeof(bool) * size * size);
 }
 
 Env::~Env()
@@ -137,13 +143,13 @@ void Env::step()
 {
 	if (cell_territory_lock.try_lock())//尝试读取数据
 	{
-		cudaMemcpy(gene_mask, cells.get_gene_mask(), sizeof(gene*) * size * size,cudaMemcpyHostToDevice);
-		cudaMemcpy(action_mask, cells.get_action_mask(), sizeof(bool) * size * size, cudaMemcpyHostToDevice);
+		cudaMemcpy(gene_mask, cells->get_gene_mask(), sizeof(gene*) * size * size,cudaMemcpyHostToDevice);
+		cudaMemcpy(action_mask, cells->get_action_mask(), sizeof(bool) * size * size, cudaMemcpyHostToDevice);
 		cell_territory_lock.unlock();
 	}
 	if (dynamic_lock.try_lock())//尝试读取数据
 	{
-		cudaMemcpy(dynamic, cells.get_dynamic(), sizeof(float) * size * size, cudaMemcpyHostToDevice);
+		cudaMemcpy(dynamic, cells->get_dynamic(), sizeof(float) * size * size, cudaMemcpyHostToDevice);
 		dynamic_lock.unlock();
 	}
 	float* ndata = 0;//旧数据保留以供其他线程读取

@@ -2,7 +2,7 @@
 #include <corecrt_math_defines.h>
 
 __device__ inline float gaussian(float x, float mean, float std) {
-	float coeff = 1.0f / (sqrtf(2.0f * M_PI * std));//为了平衡
+	float coeff = 1.0f / (2.0f * M_PI * sqrtf(std));//为了平衡
 	float exponent = expf(-0.5f * powf((x - mean) / std, 2));
 	return coeff * exponent;
 }
