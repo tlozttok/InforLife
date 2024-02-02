@@ -123,6 +123,16 @@ Env::Env(int size, int channel, Cells cells):size(size),channel(channel),cells(c
 	cudaStatus = cudaMalloc((void**)&action_mask, sizeof(bool) * size * size);
 }
 
+Env::~Env()
+{
+	cudaStatus = cudaFree(data);
+	cudaStatus = cudaFree(data_b);
+	cudaStatus = cudaFree(data_d);
+	cudaStatus = cudaFree(gene_mask);
+	cudaStatus = cudaFree(dynamic);
+	cudaStatus = cudaFree(action_mask);
+}
+
 void Env::step()
 {
 	if (cell_territory_lock.try_lock())//尝试读取数据
@@ -143,6 +153,7 @@ void Env::step()
 	cudaStatus = cudaMallocManaged((void**)&n_data_b, sizeof(float) * size * size);
 	cudaStatus = cudaMallocManaged((void**)&n_data_d, sizeof(float) * size * size);
 	step_compute<<<1,256>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel);
+	cudaThreadSynchronize();
 	gpu_data_lock.lock();//坚持覆写数据
 	cudaFree(data);
 	cudaFree(data_b);

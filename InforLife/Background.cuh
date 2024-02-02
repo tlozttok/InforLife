@@ -3,13 +3,15 @@
 #include "device_launch_parameters.h"
 #include <vector>
 #include <random>
+#include <map>
 #include "vector_types.h"
 #include "lock.h"
+#include "DefaultPara.h"
+using std::map;
 using std::vector;
 using std::rand;
+constexpr auto PI = 3.14159265358979323846;
 constexpr int GENE_PLACE_NUM = 8;
-constexpr int ACTION_PAIR_NUM = 3;
-constexpr int DYNAMIC_LEVEL = 2;
 float randf(float min, float max)
 {
 	float r = rand() % 10000 / 10000.0;
@@ -59,13 +61,14 @@ struct gene
 	int channel;
 	float* FCL_matrix;//顺序[h,w]
 	float* weight;
-	ActionPair conv_kernel_generater;
+	ActionPair* conv_kernel_generater;
 	ActionPair step;//用两个高斯就好了
 	ActionPair born;
 	ActionPair death;
 	float limit;
 	DynamicData d_data;
 	gene();
+	void generate_kernels();
 	~gene();
 };
 
@@ -80,6 +83,8 @@ struct divide_data
 	float drift_std;
 };
 
+constexpr divide_data DEFAULT_D_DATA = { 0.1,0.2,0.4,0.0,0.01 };
+
 class Cell
 {
 private:
@@ -89,7 +94,6 @@ private:
 	gene* g;
 public:
 	Cell(int x, int y, Cells* e, gene* g);
-	~Cell();
 	void mark_territory(float r);
 	void mark_territory(float r, Cell** gene_belong, int size);
 	float get_dynamic(float time);
@@ -97,6 +101,8 @@ public:
 	int Y() { return y; };
 	gene* get_gene() { return g; };
 };
+
+class Env {};
 
 class Cells
 {
@@ -109,26 +115,42 @@ private:
 	float* dynamic;//可被其他线程读
 	vector<Cell*> cell_group;
 	divide_data d_data;
+	Env* env;
+	map<gene*, int> reference_count;
 public:
 	int size;
 	int channel;
 	int env_length;
 	Cells(int size,int channel);
+	~Cells();
+	void set_env(Env* e) { env = e; };
 	//数据获取函数：
+
 	gene** get_gene_mask() { return gene_mask; };
 	bool* get_action_mask() { return action_mask; };
 	float* get_dynamic() { return dynamic; };
+
 	//辅助函数：
+
 	void set_gene_belong(int x, int y, Cell* c);
 	void generate_gene_belong(float r);
-	void generate_g_mask(float r);//r应当和gene_belong的一样，在生成genemask后再调用
+	//r应当和gene_belong的一样，在生成genemask后再调用
+	void generate_g_mask(float r);
+	void data_update_msg() { need_update = true; };
+
 	//主流程函数：
+
 	void generate_gene_mask();
 	void generate_action_mask();
-	void generate_dynamic(float time);//单独线程运行
-	void divide_cell();
+	//单独线程运行
+	void generate_dynamic(float time);
+	void divide_cell(float* data_b);
+	void cell_die(float* data_d);
+
 	//主循环函数：
-	void step();
+	
+	//传GPU数据进去
+	void step(float* data_b,float* data_d);
 };
 
 class Env
@@ -149,7 +171,8 @@ public:
 	int const size;
 	int const channel;
 	Env(int size, int channel,Cells cells);
-	gene* add_gene(gene g);
-	void move_data(gene** gene_mask);
+	~Env();
 	void step();
+	float* get_data_b() { return data_b; };
+	float* get_data_d() { return data_d; };
 };

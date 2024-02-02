@@ -78,16 +78,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="Background.cu" />
-    <CudaCompile Include="kernel.cu" />
+    <CudaCompile Include="kernel.cu">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Background.cuh" />
+    <ClInclude Include="DefaultPara.h" />
     <ClInclude Include="Function.cuh" />
     <ClInclude Include="lock.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Definition.cpp" />
     <ClCompile Include="Front.cpp" />
+    <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
