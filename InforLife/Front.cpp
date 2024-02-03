@@ -183,6 +183,7 @@ void Cells::generate_g_mask(float r)
 		cell->mark_territory(r-1,g_belong,size);
 	}
 	nearest_detect(g_belong, size, g_mask);
+	delete[] g_belong;
 	for (int i = 0; i < env_length; i++) {
 		if ((gene_mask[i] == nullptr)!=(g_mask[i]==nullptr)) {
 			g_mask[i] = gene_mask[i];
@@ -287,6 +288,9 @@ void Cells::step(float* g_data_b,float* g_data_d)
 		cudaMemcpy(data_d, g_data_d, env_length, cudaMemcpyDeviceToHost);
 		gpu_data_lock.unlock();
 		divide_cell(data_b);
+		cell_die(data_d);
+		delete[] data_b;
+		delete[] data_d;
 	}
 	if (need_update) {
 		generate_gene_belong(CELL_BELONG_RADIUS);

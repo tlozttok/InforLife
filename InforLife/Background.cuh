@@ -9,6 +9,23 @@
 #include <map>
 #include "vector_types.h"
 #include "lock.h"
+#include <cstdio>
+
+#ifndef checkCuda
+#define checkCuda(err)  __checkCudaErrors (err, __FILE__, __LINE__)
+
+inline void __checkCudaErrors(cudaError_t err, const char* file, const int line)
+{
+	if (cudaSuccess != err)
+	{
+		fprintf(stderr, "checkCudaErrors() Driver API error = %04d \"%s\" from file <%s>, line %i.\n",
+			err, cudaGetErrorString(err), file, line);//getCudaDrvErrorString
+		exit(EXIT_FAILURE);
+	}
+}
+#endif
+
+
 using std::map;
 using std::vector;
 using std::rand;
@@ -171,6 +188,7 @@ public:
 	Env(int size, int channel,Cells* cells);
 	~Env();
 	void step();
+	int* get_data_img();
 	float* get_data_b() { return data_b; };
 	float* get_data_d() { return data_d; };
 };

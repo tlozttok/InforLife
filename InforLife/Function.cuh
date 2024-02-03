@@ -18,3 +18,17 @@ __device__ inline float mix_gaussian_gpu(float data, ActionPair* RF) {
 __device__ inline float sin_af(float x) {
 	return sinf(x * M_PI);
 }
+
+inline float cut(float x) {
+	if (x < 0) {
+		return 0;
+	}
+	else if (x > 1) {
+		return 1;
+	}
+	else return x;
+}
+
+inline float sigmoid(float x) {
+	return 1 / (1 + pow(M_E, -3 * (x - 0.5)));
+}

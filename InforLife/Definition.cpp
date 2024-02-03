@@ -97,11 +97,20 @@ gene::gene() {
 	cudaMallocManaged((void**)&weight, sizeof(float) * channel);
 	cudaMallocManaged((void**)&FCL_matrix, sizeof(float) * channel * channel);
 	cudaMallocManaged((void**)&conv_kernel_generater, sizeof(ActionPair) * channel);
-	step = ActionPair(STEP_ACTION_PARI_NUM);
-	born = ActionPair();
-	death = ActionPair();
-	d_data = DynamicData();
-	limit = 0;
+	for (int c = 0; c < channel; c++) {
+		ActionPair ap = ActionPair(KERNEL_PAIR_NUM);
+		cudaMemcpy(&(conv_kernel_generater[c]), &ap, sizeof(ActionPair), cudaMemcpyHostToDevice);
+	}
+	ActionPair* c_step = new ActionPair(STEP_ACTION_PARI_NUM);
+	ActionPair c_born = ActionPair();
+	ActionPair c_death = ActionPair();
+	DynamicData c_d_data = DynamicData();
+	cudaMemcpy(&(step), c_step, sizeof(ActionPair), cudaMemcpyDefault);
+	cudaMemcpy(&(born), &c_born, sizeof(ActionPair), cudaMemcpyDefault);
+	cudaMemcpy(&(death), &c_death, sizeof(ActionPair), cudaMemcpyDefault);
+	cudaMemcpy(&(d_data), &c_d_data, sizeof(DynamicData), cudaMemcpyDefault);
+	delete c_step;
+	limit = randf(0,1);
 }
 
 gene::~gene()

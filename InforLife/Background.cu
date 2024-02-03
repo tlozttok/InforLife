@@ -169,3 +169,14 @@ void Env::step()
 	data_d = n_data_d;
 	gpu_data_lock.unlock();
 }
+
+int* Env::get_data_img()
+{
+	float* fdata = new float[sizeof(float) * size * size * channel];
+	int* img_data = new int[sizeof(float) * size * size * channel];
+	cudaMemcpy(fdata, data, sizeof(float) * size * size * channel, cudaMemcpyDeviceToHost);
+	for (int i = 0; i < size * size * channel; i++) {
+		img_data[i] = int(256 * cut(fdata[i]));
+	}
+	return img_data;
+}
