@@ -1,5 +1,6 @@
 #include "Background.cuh"
 #include "Function.cuh"
+#include <cstdio>
 typedef float (*f2f)(float);
 
 __device__ int pos2offset(int x, int y, int c, int size)
@@ -83,32 +84,38 @@ __global__ void step_compute(
 ) {
 	int id = threadIdx.x;
 	int num = size * size;
-	int amount = int(num / id + 1);
-	for (int i = id * amount; i < id * (amount + 1); i++) {
-		int3 pos = offset2pos(i, size);
-		gene* g = gene_mask[i];
-		float* conv_r = 0;
-		cudaMalloc((void**)&conv_r, sizeof(float) * channel);//卷积结果的内存
-		conv(data, g->conv_kernel, g->kernel_sum, g->k_length, channel, pos.x, pos.y, size, conv_r);//卷积
-		activate(conv_r, channel, sin_af);//激活
-		float* mat_r = 0;
-		cudaMalloc((void**)&mat_r, sizeof(float) * channel);//矩阵变换结果的内存
-		matmul(conv_r, g->FCL_matrix, size, size, mat_r);//矩阵乘法
-		respond(mat_r, channel, &(g->step));//得到结果
-		for (int c = 0; c < channel; c++) {
-			n_data[i + c * num] = mat_r[c]*delta_t+dynamic[i + c * num];
-		}
-		if (action_mask[i]) {
-			float born = 0;
-			float death = 0;
-			matmul(conv_r, g->weight, channel, 1, &born);//细胞动作计算
-			death = born;
-			respond(&born, 1, &(g->born));
-			respond(&death, 1, &(g->death));
-			death -= g->limit;
-			born -= g->limit;
-			data_b[i] = born;
-			data_d[i] = death;
+	int amount = int(num / blockDim.x + 1);
+	for (int i = id * amount; i < (id+1) * amount; i++) {
+		if (i < num) {
+			int3 pos = offset2pos(i, size);
+			gene* g = gene_mask[i];
+			float* conv_r = 0;
+			cudaMalloc((void**)&conv_r, sizeof(float) * channel);//卷积结果的内存
+			printf("i: %d \n", i);
+			conv(data, g->conv_kernel, g->kernel_sum, g->k_length, channel, pos.x, pos.y, size, conv_r);//卷积
+			printf("i: %d \n", i);
+			activate(conv_r, channel, sin_af);//激活
+			printf("i: %d \n", i);
+			float* mat_r = 0;
+			cudaMalloc((void**)&mat_r, sizeof(float) * channel);//矩阵变换结果的内存
+			matmul(conv_r, g->FCL_matrix, size, size, mat_r);//矩阵乘法
+			respond(mat_r, channel, &(g->step));//得到结果
+			printf("i: %d \n", i);
+			for (int c = 0; c < channel; c++) {
+				n_data[i + c * num] = mat_r[c] * delta_t + dynamic[i + c * num];
+			}
+			if (action_mask[i]) {
+				float born = 0;
+				float death = 0;
+				matmul(conv_r, g->weight, channel, 1, &born);//细胞动作计算
+				death = born;
+				respond(&born, 1, &(g->born));
+				respond(&death, 1, &(g->death));
+				death -= g->limit;
+				born -= g->limit;
+				data_b[i] = born;
+				data_d[i] = death;
+			}
 		}
 	}
 }
@@ -143,7 +150,8 @@ void Env::step()
 {
 	if (cell_territory_lock.try_lock())//尝试读取数据
 	{
-		cudaMemcpy(gene_mask, cells->get_gene_mask(), sizeof(gene*) * size * size,cudaMemcpyHostToDevice);
+		gene** genemask = cells->get_gene_mask();
+		cudaMemcpy(gene_mask, genemask, sizeof(gene*) * size * size,cudaMemcpyHostToDevice);
 		cudaMemcpy(action_mask, cells->get_action_mask(), sizeof(bool) * size * size, cudaMemcpyHostToDevice);
 		cell_territory_lock.unlock();
 	}
@@ -158,7 +166,7 @@ void Env::step()
 	cudaStatus = cudaMallocManaged((void**)&ndata, sizeof(float) * size * size * channel);
 	cudaStatus = cudaMallocManaged((void**)&n_data_b, sizeof(float) * size * size);
 	cudaStatus = cudaMallocManaged((void**)&n_data_d, sizeof(float) * size * size);
-	step_compute<<<1,256>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel);
+	step_compute<<<1,2>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel);
 	cudaDeviceSynchronize();
 	gpu_data_lock.lock();//坚持覆写数据
 	cudaFree(data);

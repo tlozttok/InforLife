@@ -98,18 +98,24 @@ gene::gene() {
 	cudaMallocManaged((void**)&FCL_matrix, sizeof(float) * channel * channel);
 	cudaMallocManaged((void**)&conv_kernel_generater, sizeof(ActionPair) * channel);
 	for (int c = 0; c < channel; c++) {
-		ActionPair ap = ActionPair(KERNEL_PAIR_NUM);
-		cudaMemcpy(&(conv_kernel_generater[c]), &ap, sizeof(ActionPair), cudaMemcpyHostToDevice);
+		ActionPair* ap = new ActionPair(KERNEL_PAIR_NUM);
+		cudaMemcpy(&(conv_kernel_generater[c]), ap, sizeof(ActionPair), cudaMemcpyHostToDevice);
+		operator delete(ap);
 	}
-	ActionPair* c_step = new ActionPair(STEP_ACTION_PARI_NUM);
-	ActionPair c_born = ActionPair();
-	ActionPair c_death = ActionPair();
-	DynamicData c_d_data = DynamicData();
+	ActionPair* c_step = new ActionPair(STEP_ACTION_PAIR_NUM);
+	ActionPair* c_born = new ActionPair();
+	ActionPair* c_death = new ActionPair();
+	DynamicData* c_d_data = new DynamicData();
 	cudaMemcpy(&(step), c_step, sizeof(ActionPair), cudaMemcpyDefault);
-	cudaMemcpy(&(born), &c_born, sizeof(ActionPair), cudaMemcpyDefault);
-	cudaMemcpy(&(death), &c_death, sizeof(ActionPair), cudaMemcpyDefault);
-	cudaMemcpy(&(d_data), &c_d_data, sizeof(DynamicData), cudaMemcpyDefault);
-	delete c_step;
+	cudaMemcpy(&(born), c_born, sizeof(ActionPair), cudaMemcpyDefault);
+	cudaMemcpy(&(death), c_death, sizeof(ActionPair), cudaMemcpyDefault);
+	cudaMemcpy(&(d_data), c_d_data, sizeof(DynamicData), cudaMemcpyDefault);
+	step.means[0] = 0.5;
+	operator delete(c_step);
+	operator delete(c_born);
+	operator delete(c_death);
+	operator delete(c_d_data);
+	step.means[0] = 0.5;
 	limit = randf(0,1);
 }
 

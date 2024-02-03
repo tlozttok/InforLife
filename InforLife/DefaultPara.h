@@ -1,7 +1,7 @@
 #pragma once
 
 static int ACTION_PAIR_NUM = 3;
-static int STEP_ACTION_PARI_NUM = 2;
+static int STEP_ACTION_PAIR_NUM = 2;
 static int KERNEL_PAIR_NUM = 3;
 static int DYNAMIC_LEVEL = 2;
 static float CELL_BELONG_RADIUS = 5;
