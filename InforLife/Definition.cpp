@@ -1,6 +1,6 @@
 #include "Background.cuh"
 #include "DefaultPara.h"
-
+extern gene* DEFAULT_GENE;
 
 float gaussian(float x, float mean, float std) {
 	float coeff = 1.0f / (sqrtf(2.0f * PI ) * std);
@@ -14,10 +14,10 @@ float randf(float min, float max)
 	return min + r * (max - min);
 }
 
-float mix_gaussian(float x, ActionPair RF) {
+float mix_gaussian(float x, ActionPair* RF) {
 	float r = 0;
-	for (int i = 0; i < RF.num; i++) {
-		r += gaussian(x, RF.means[i], RF.stds[i]);
+	for (int i = 0; i < RF->num; i++) {
+		r += gaussian(x, RF->means[i], RF->stds[i]);
 	}
 	return r;
 }
@@ -68,11 +68,12 @@ void generate_kernel(int k_length, float* kernel, ActionPair* src, int channel, 
 	int id = 0;
 	for (int c = 0; c < channel; c++) {
 		float sum = 0;
-		for (int iy = -k_length; iy < k_length; iy++) {
-			for (int ix = -k_length; ix < k_length; ix++) {
+		for (int iy = -k_length; iy <= k_length; iy++) {
+			for (int ix = -k_length; ix <= k_length; ix++) {
 				float x = float(ix) / k_length;
 				float y = float(iy) / k_length;
-				float w = mix_gaussian(sqrt(x * x + y * y), src[c]);
+				float d = sqrt(x * x + y * y);
+				float w = mix_gaussian(d, src+c);
 				sum += w;
 				kernel[id] = w;
 				id++;
@@ -157,3 +158,21 @@ Cells::~Cells()
 	delete[] dynamic;
 }
 
+void trans_data(cv::Mat mat, float* data,int channel,int size)
+{
+	uchar* data_ptr = mat.data;
+	int s0 = mat.step[0];
+	int s1 = mat.step[1];
+
+	int i = 0;
+	for (int c = 0; c < channel; c++) {
+		int id = 0;
+		for (int col = 0; col < size; col++) {
+			for (int r = 0; r < size; r++) {
+				int t = int(data[i] * 2550);
+				*(data_ptr + col * s0 + r * s1 + c) = t;
+				i++;
+			}
+		}
+	}
+}

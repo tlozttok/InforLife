@@ -10,6 +10,7 @@
 #include "vector_types.h"
 #include "lock.h"
 #include <cstdio>
+#include <opencv2/opencv.hpp>
 
 #ifndef checkCuda
 #define checkCuda(err)  __checkCudaErrors (err, __FILE__, __LINE__)
@@ -25,7 +26,7 @@ inline void __checkCudaErrors(cudaError_t err, const char* file, const int line)
 }
 #endif
 
-
+typedef std::vector<std::vector<std::vector<uint8_t>>> vector_img;
 using std::map;
 using std::vector;
 using std::rand;
@@ -86,7 +87,6 @@ struct gene
 	~gene();
 };
 
-static gene* DEFAULT_GENE;
 
 struct divide_data
 {
@@ -188,11 +188,13 @@ public:
 	Env(int size, int channel,Cells* cells);
 	~Env();
 	void step();
-	int* get_data_img();
+	void randomlise();
+	void get_data_img(cv::Mat mat);
 	float* get_data_b() { return data_b; };
 	float* get_data_d() { return data_d; };
+	float get_time() { return time; };
 };
 
 float gaussian(float x, float mean, float std);
-
+void trans_data(cv::Mat mat, float* data, int channel, int size);
 #endif // !BACKGROUND

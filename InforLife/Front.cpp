@@ -1,7 +1,7 @@
 #include "Background.cuh"
 #include "DefaultPara.h"
 #include <algorithm>
-
+extern gene* DEFAULT_GENE;
 
 void nearest_detect(Cell** gene_belong, int size, gene** result)
 {
@@ -157,6 +157,15 @@ float Cell::get_dynamic(float time)
 	return d;
 }
 
+void Env::randomlise()
+{
+	float* r = new float[size * size * channel];
+	for (int i = 0; i < size * size * channel; i++) {
+		r[i] = randf(0, 1);
+	}
+	cudaMemcpy(data, r, sizeof(float) * size * size * channel, cudaMemcpyDefault);
+}
+
 void Cells::set_gene_belong(int x, int y, Cell* c)
 {
 	int index = (y * size + x) * GENE_PLACE_NUM;
@@ -196,7 +205,7 @@ void Cells::generate_g_mask(float r)
 
 void Cells::generate_gene_mask()
 {
-	gene** n_gene_mask = new gene * [env_length];
+	gene** n_gene_mask = new gene*[env_length];
 	nearest_detect(gene_belong, size, n_gene_mask);
 	cell_territory_lock.lock();//写数据强制加锁
 	delete[] gene_mask;
@@ -284,8 +293,8 @@ void Cells::step(float* g_data_b,float* g_data_d)
 	if (gpu_data_lock.try_lock()) {
 		float* data_b = new float[env_length];
 		float* data_d = new float[env_length];
-		cudaMemcpy(data_b, g_data_b, env_length, cudaMemcpyDeviceToHost);
-		cudaMemcpy(data_d, g_data_d, env_length, cudaMemcpyDeviceToHost);
+		cudaMemcpy(data_b, g_data_b, sizeof(float) * env_length, cudaMemcpyDeviceToHost);
+		cudaMemcpy(data_d, g_data_d, sizeof(float) * env_length, cudaMemcpyDeviceToHost);
 		gpu_data_lock.unlock();
 		divide_cell(data_b);
 		cell_die(data_d);
