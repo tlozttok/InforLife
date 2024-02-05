@@ -2,10 +2,10 @@
 #include <corecrt_math_defines.h>
 
 __device__ inline float gaussian_gpu(float x, float mean, float std) {
-	float coeff = 1.0f / (2.0f * M_PI * sqrtf(std));//为了平衡
+	float coeff = 1.0f / (2.0f * M_PI * sqrtf(abs(std)));//为了平衡
 	float exponent = expf(-0.5f * powf((x - mean) / std, 2));
-
-	return coeff * exponent;
+	
+	return coeff * exponent * (std / abs(std));
 }
 
 __device__ inline float mix_gaussian_gpu(float data, ActionPair* RF) {

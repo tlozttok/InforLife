@@ -270,16 +270,20 @@ void Cells::divide_cell(float* data_b)
 
 void Cells::cell_die(float* data_d)
 {
+	int index = 0;
 	for (auto cell = cell_group.begin(); cell != cell_group.end();) {
 		int id = (*cell)->X() + size * (*cell)->Y();
 		if (data_d[id] > 0) {
 			reference_count[(*cell)->get_gene()]--;
 			if (reference_count[(*cell)->get_gene()] <= 0) {
 				reference_count.erase((*cell)->get_gene());
+				if ((*cell)->get_gene() != DEFAULT_GENE) {
+					delete (*cell)->get_gene();
+				}
 			}
-			delete (*cell);
-			std::iter_swap(cell, cell_group.end() - 1);
-			cell_group.pop_back();
+			Cell* cp = *cell;
+			cell = cell_group.erase(std::remove(cell_group.begin(), cell_group.end(), cp), cell_group.end());
+			delete cp;
 			data_update_msg();
 		}
 		else {

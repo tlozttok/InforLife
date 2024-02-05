@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <opencv2/core/utils/logger.hpp>
 gene* DEFAULT_GENE;
 
@@ -11,10 +12,12 @@ using std::cout;
 using std::endl;
 
 void init_default_gene();
+void read_config(const std::string& filename);
 
 int main(int argc, char* argv[])
 {
 	cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
+	read_config("E:\\code\\c++\\InforLife\\config.txt");
 	cout << "start" << endl;
 	Cells cell_group = Cells(ENV_SIZE, CHANNEL);
 	cout << "cell_group init done" << endl;
@@ -32,9 +35,9 @@ int main(int argc, char* argv[])
 	//cv::waitKey(0);
 
 	cout << "default_gene init done" << endl;
-	Cell first = Cell(45, 45, &cell_group, DEFAULT_GENE);
+	Cell* first = new Cell(45, 45, &cell_group, DEFAULT_GENE);
 	cout << "first cell init done" << endl;
-	//cell_group.add_cell(&first);
+	cell_group.add_cell(first);
 	cout << "add cell done" << endl;
 	//env.randomlise();
 	int i=1;
@@ -79,6 +82,108 @@ void init_default_gene()
 	operator delete(n_gene);
 }
 
+void set_config(std::string key, std::istringstream& iss) {
+	if (key=="APN"){
+		iss >> ACTION_PAIR_NUM;
+		D_G_BORN_AP_MEAN = new float[ACTION_PAIR_NUM];
+		D_G_DEATH_AP_MEAN = new float[ACTION_PAIR_NUM];
+		D_G_BORN_AP_STD = new float[ACTION_PAIR_NUM];
+		D_G_DEATH_AP_STD = new float[ACTION_PAIR_NUM];
+	}
+	else if (key == "SAPN") {
+		iss >> STEP_ACTION_PAIR_NUM;
+		D_G_STEP_AP_MEAN = new float[STEP_ACTION_PAIR_NUM];
+		D_G_STEP_AP_STD = new float[STEP_ACTION_PAIR_NUM];
+	}
+	else if (key == "KPN") {
+		iss >> KERNEL_PAIR_NUM;
+		D_G_KERNEL_AP_MEAN = new float[KERNEL_PAIR_NUM];
+		D_G_KERNEL_AP_STD = new float[KERNEL_PAIR_NUM];
+	}
+	else if (key == "DL") {
+		iss >> DYNAMIC_LEVEL;
+		D_G_DYNAMIC_A = new float[DYNAMIC_LEVEL];
+		D_G_DYNAMIC_PHI = new float[DYNAMIC_LEVEL];
+	}
+	else if (key == "CBR") {
+		iss >> CELL_BELONG_RADIUS;
+	}
+	else if (key == "ES") {
+		iss >> ENV_SIZE;
+	}
+	else if (key == "KL") {
+		iss >> KERNEL_LENGTH;
+	}
+	else if (key == "C") {
+		iss >> CHANNEL;
+		D_GENE_WEIGHT = new float[CHANNEL];
+		D_GENE_FCL_MATRIX = new float[CHANNEL * CHANNEL];
+	}
+	else if (key == "DT") {
+		iss >> DELTA_T;
+	}
+	else if (key == "DGW") {
+		for (int i = 0; i < CHANNEL; i++) {
+			iss >> D_GENE_WEIGHT[i];
+		}
+	}
+	else if (key == "DGFM") {
+		for (int i = 0; i < CHANNEL*CHANNEL; i++) {
+			iss >> D_GENE_FCL_MATRIX[i];
+		}
+	}
+	else if (key == "DGSAM") {
+		for (int i = 0; i < STEP_ACTION_PAIR_NUM; i++) {
+			iss >> D_G_STEP_AP_MEAN[i];
+		}
+	}
+	else if (key == "DGBAM") {
+		for (int i = 0; i < ACTION_PAIR_NUM; i++) {
+			iss >> D_G_BORN_AP_MEAN[i];
+		}
+	}
+	else if (key == "DGDAM") {
+		for (int i = 0; i < ACTION_PAIR_NUM; i++) {
+			iss >> D_G_DEATH_AP_MEAN[i];
+		}
+	}
+	else if (key == "DGSAS") {
+		for (int i = 0; i < STEP_ACTION_PAIR_NUM; i++) {
+			iss >> D_G_STEP_AP_STD[i];
+		}
+	}
+	else if (key == "DGBAS") {
+		for (int i = 0; i < ACTION_PAIR_NUM; i++) {
+			iss >> D_G_BORN_AP_STD[i];
+		}
+	}
+	else if (key == "DGDAS") {
+		for (int i = 0; i < ACTION_PAIR_NUM; i++) {
+			iss >> D_G_DEATH_AP_STD[i];
+		}
+	}
+	else if (key == "DGDA") {
+		for (int i = 0; i < DYNAMIC_LEVEL; i++) {
+			iss >> D_G_DYNAMIC_A[i];
+		}
+	}
+	else if (key == "DGDP") {
+		for (int i = 0; i < DYNAMIC_LEVEL; i++) {
+			iss >> D_G_DYNAMIC_PHI[i];
+		}
+	}
+	else if (key == "DGKAM") {
+		for (int i = 0; i < KERNEL_PAIR_NUM; i++) {
+			iss >> D_G_KERNEL_AP_MEAN[i];
+		}
+	}
+	else if (key == "DGKAS") {
+		for (int i = 0; i < KERNEL_PAIR_NUM; i++) {
+			iss >> D_G_KERNEL_AP_STD[i];
+		}
+	}
+}
+
 void read_config(const std::string& filename)
 {
 	std::ifstream file(filename);
@@ -88,6 +193,12 @@ void read_config(const std::string& filename)
 	}
 	std::string line;
 	while (std::getline(file, line)) {
-		size_t pos = line.find('=');
+		if (line.empty() || line[0] == '#') {
+			continue;
+		}
+		std::istringstream iss(line);
+		std::string key;
+		iss >> key;
+		set_config(key, iss);
 	}
 }

@@ -116,6 +116,7 @@ public:
 	int X() { return x; };
 	int Y() { return y; };
 	gene* get_gene() { return g; };
+	~Cell() {};
 };
 
 class Cells
@@ -149,7 +150,7 @@ public:
 	int env_length;
 	Cells(int size,int channel);
 	~Cells();
-	void add_cell(Cell* c) { cell_group.push_back(c); };
+	void add_cell(Cell* c) { cell_group.push_back(c); reference_count[c->get_gene()]++; };
 	//数据获取函数：
 
 	gene** get_gene_mask() { return gene_mask; };
