@@ -2,6 +2,8 @@
 #include "Background.cuh"
 #include "DefaultPara.h"
 #include <iostream>
+#include <fstream>
+#include <string>
 #include <opencv2/core/utils/logger.hpp>
 gene* DEFAULT_GENE;
 
@@ -75,4 +77,17 @@ void init_default_gene()
 	cudaMemcpy(DEFAULT_GENE->weight, D_GENE_WEIGHT, sizeof(float) * CHANNEL, cudaMemcpyDefault);
 	DEFAULT_GENE->generate_kernels();
 	operator delete(n_gene);
+}
+
+void read_config(const std::string& filename)
+{
+	std::ifstream file(filename);
+	if (!file.is_open()) {
+		std::cerr << "无法打开配置文件： " << filename << std::endl;
+		return;
+	}
+	std::string line;
+	while (std::getline(file, line)) {
+		size_t pos = line.find('=');
+	}
 }
