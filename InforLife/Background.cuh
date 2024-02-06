@@ -15,6 +15,8 @@
 #ifndef checkCuda
 #define checkCuda(err)  __checkCudaErrors (err, __FILE__, __LINE__)
 
+
+
 inline void __checkCudaErrors(cudaError_t err, const char* file, const int line)
 {
 	if (cudaSuccess != err)
@@ -35,17 +37,6 @@ float randf(float min, float max);
 static std::random_device rd;
 static std::mt19937 random_gen(rd());
 
-class NonLinearMap
-{
-public:
-	virtual float operator()(float x) = 0;
-};
-
-class ActionJudge
-{
-public:
-	virtual bool operator()(float x) = 0;
-};
 
 struct ActionPair
 {
@@ -116,6 +107,7 @@ public:
 	int X() { return x; };
 	int Y() { return y; };
 	gene* get_gene() { return g; };
+	gene* get_new_gene();
 	~Cell() {};
 };
 
@@ -198,4 +190,29 @@ public:
 
 float gaussian(float x, float mean, float std);
 void trans_data(cv::Mat mat, float* data, int channel, int size);
+inline void show_data(cv::Mat mat, int channel, int size, gene** data)
+{
+		uchar* data_ptr = mat.data;
+		int s0 = mat.step[0];
+		int s1 = mat.step[1];
+
+		int i = 0;
+		for (int c = 0; c < channel; c++) {
+			int id = 0;
+			for (int col = 0; col < size; col++) {
+				for (int r = 0; r < size; r++) {
+					int t = data[i]->id==0?0:255;
+					*(data_ptr + col * s0 + r * s1 + c) = t;
+					i++;
+				}
+			}
+		}
+
+		cv::Mat large(700, 700, CV_8UC3);
+		cv::namedWindow("Kernel", cv::WINDOW_NORMAL);
+		cv::resizeWindow("Kernel", 700, 700);
+		cv::resize(mat, large, cv::Size(700, 700), 0, 0, cv::INTER_NEAREST);
+		cv::imshow("Kernel", large);
+		cv::waitKey(0);
+}
 #endif // !BACKGROUND

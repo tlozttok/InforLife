@@ -13,9 +13,21 @@ using std::endl;
 
 void init_default_gene();
 void read_config(const std::string& filename);
+void show_kernel(gene* gene) {
+	cv::Mat kernel((gene->k_length * 2 + 1), (gene->k_length * 2 + 1), CV_8UC3);
+	trans_data(kernel, gene->conv_kernel, gene->channel, gene->k_length * 2 + 1);
+	cv::Mat large(700, 700, CV_8UC3);
+	cv::namedWindow("Kernel", cv::WINDOW_NORMAL);
+	cv::resizeWindow("Kernel", 700, 700);
+	cv::resize(kernel, large, cv::Size(700, 700), 0, 0, cv::INTER_NEAREST);
+	cv::imshow("Kernel", large);
+	cv::waitKey(0);
+}
+
 
 int main(int argc, char* argv[])
 {
+	//srand(56745);
 	cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
 	read_config("E:\\code\\c++\\InforLife\\config.txt");
 	cout << "start" << endl;
@@ -25,17 +37,11 @@ int main(int argc, char* argv[])
 	cout << "env init done" << endl;
 	init_default_gene();
 
-	//cv::Mat kernel((DEFAULT_GENE->k_length * 2 + 1), (DEFAULT_GENE->k_length * 2 + 1), CV_8UC3);
-	//trans_data(kernel, DEFAULT_GENE->conv_kernel, DEFAULT_GENE->channel, DEFAULT_GENE->k_length * 2 + 1);
-	//cv::Mat large(700, 700, CV_8UC3);
-	//cv::namedWindow("Kernel", cv::WINDOW_NORMAL);
-	//cv::resizeWindow("Kernel", 700, 700);
-	//cv::resize(kernel, large, cv::Size(700, 700), 0, 0, cv::INTER_NEAREST);
-	//cv::imshow("Kernel", large);
-	//cv::waitKey(0);
+	//show_kernel(DEFAULT_GENE);
 
 	cout << "default_gene init done" << endl;
-	Cell* first = new Cell(45, 45, &cell_group, DEFAULT_GENE);
+	Cell init_cell = Cell(45, 45, &cell_group, DEFAULT_GENE);
+	Cell* first = new Cell(45, 45, &cell_group, init_cell.get_new_gene());
 	cout << "first cell init done" << endl;
 	cell_group.add_cell(first);
 	cout << "add cell done" << endl;
@@ -55,6 +61,7 @@ int main(int argc, char* argv[])
 		cv::resize(image, large, cv::Size(700, 700), 0, 0, cv::INTER_NEAREST);
 		cv::imshow("Image", large);
 		cv::waitKey(1);
+		i++;
 	}
 	return 0;
 }

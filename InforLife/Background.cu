@@ -110,7 +110,8 @@ __global__ void step_compute(
 				printf("\tid:%d,d:%f", i, dynamic[i]);
 			}
 			for (int c = 0; c < channel; c++) {
-				n_data[i + c * num] = data[i + c * num]+(buffer_mat_r + channel * i)[c] * delta_t + dynamic[i];
+				//n_data[i + c * num] = sigmoid_g(data[i + c * num]+(buffer_mat_r + channel * i)[c] * delta_t + dynamic[i]);
+				n_data[i + c * num] = __saturatef(data[i + c * num] + (buffer_mat_r + channel * i)[c] * delta_t + dynamic[i]);
 			}
 
 			if (action_mask[i]) {
@@ -189,7 +190,8 @@ void Env::step()
 	float* buffer_m = 0;
 	cudaStatus = cudaMalloc((void**)&buffer_c, sizeof(float) * channel * size * size);
 	cudaStatus = cudaMalloc((void**)&buffer_m, sizeof(float) * channel * size * size);
-	step_compute<<<64,32>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel, buffer_c, buffer_m);
+	step_compute<<<32,64>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel, buffer_c, buffer_m);
+	checkCuda(cudaGetLastError());
 	time += delta_t;
 	cudaDeviceSynchronize();
 	cudaFree(buffer_c);
@@ -215,7 +217,7 @@ void Env::get_data_img(cv::Mat mat)
 		int id = 0;
 		for (int col = 0; col < size; col++) {
 			for (int r = 0; r < size; r++) {
-				int t = int(data[i] * 2550);
+				int t = int(data[i] * 255);
 				*(data_ptr + col * s0 + r * s1 + c) = t;
 				i++;
 			}

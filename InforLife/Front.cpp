@@ -50,42 +50,41 @@ void array_mutant(const float* o_array, float* n_array, int length, float single
 	}
 }
 
-ActionPair ActionPair_mutant(const ActionPair a, float single_prob, std::normal_distribution<>& d)
+void ActionPair_mutant(const ActionPair a, ActionPair* na,float single_prob, std::normal_distribution<>& d)
 {
-	ActionPair na(a.num);
-	array_mutant(a.means, na.means, a.num, single_prob, d);
-	array_mutant(a.stds, na.stds, a.num, single_prob, d);
-	return na;
+	array_mutant(a.means, na->means, a.num, single_prob, d);
+	array_mutant(a.stds, na->stds, a.num, single_prob, d);
 }
 
-DynamicData Dynamic_mutant(const DynamicData dd, float single_prob, std::normal_distribution<>& d)
+void Dynamic_mutant(const DynamicData dd, DynamicData* nd, float single_prob, std::normal_distribution<>& d)
 {
-	DynamicData nd;
-	array_mutant(dd.A, nd.A, dd.level, single_prob, d);
-	array_mutant(dd.phi, nd.phi, dd.level, single_prob, d);
-	return nd;
+	array_mutant(dd.A, nd->A, dd.level, single_prob, d);
+	array_mutant(dd.phi, nd->phi, dd.level, single_prob, d);
 }
 
 void gene_mutant(const gene* parent, gene* n_gene, float single_prob, std::normal_distribution<>& d)
 {
 	array_mutant(parent->FCL_matrix, n_gene->FCL_matrix, parent->channel * parent->channel, single_prob, d);
 	array_mutant(parent->weight, n_gene->weight, parent->channel, single_prob, d);
-	n_gene->death = ActionPair_mutant(parent->death, single_prob, d);
-	n_gene->born = ActionPair_mutant(parent->born, single_prob, d);
-	n_gene->step = ActionPair_mutant(parent->step, single_prob, d);
-	n_gene->d_data = Dynamic_mutant(parent->d_data, single_prob, d);
+	ActionPair_mutant(parent->death, &(n_gene->death), single_prob, d);
+	ActionPair_mutant(parent->born, &(n_gene->born), single_prob, d);
+	ActionPair_mutant(parent->step, &(n_gene->step),single_prob, d);
+	Dynamic_mutant(parent->d_data, &(n_gene->d_data), single_prob, d);
 	n_gene->limit = mutant(parent->limit, single_prob, d);
 	n_gene->id = rand();
 	for (int c = 0; c < parent->channel; c++) {
-		n_gene->conv_kernel_generater[c] = ActionPair_mutant(parent->conv_kernel_generater[c], single_prob, d);
+		ActionPair_mutant(parent->conv_kernel_generater[c], &(n_gene->conv_kernel_generater[c]), single_prob, d);
 	}
 	n_gene->generate_kernels();
 }
 
 gene* gene_mutant_cuda(const gene* parent, divide_data d_data)//不要传cpu数据进去
 {
+	gene* c_n_gene = new gene();
 	gene* n_gene = 0;
 	cudaMallocManaged((void**)&n_gene, sizeof(gene));
+	cudaMemcpy(n_gene, c_n_gene, sizeof(gene), cudaMemcpyDefault);
+	operator delete(c_n_gene);
 	std::normal_distribution<> d(d_data.drift_mean, d_data.drift_std);
 	gene_mutant(parent, n_gene, d_data.single_prob, d);
 	return n_gene;
@@ -129,9 +128,9 @@ void Cell::mark_territory(float r)
 
 void Cell::mark_territory(float r, Cell** gene_belong, int size)
 {
-	for (int ix = int(x - r - 1); ix<int(x + r + 1); ix++) {
+	for (int ix = int(x - r - 1); ix<=int(x + r + 1); ix++) {
 		if (ix >= 0 && ix < group->size) {
-			for (int iy = int(y - r - 1); iy<int(y + r + 1); iy++) {
+			for (int iy = int(y - r - 1); iy<=int(y + r + 1); iy++) {
 				if (iy >= 0 && iy < group->size) {
 					double d = sqrt((ix - x) * (ix - x) + (iy - y) * (iy - y));
 					if (d < r) {
@@ -139,6 +138,7 @@ void Cell::mark_territory(float r, Cell** gene_belong, int size)
 						for (int i = index; i < index + 9; i++) {
 							if (gene_belong[i] == nullptr) {
 								gene_belong[i] = this;
+								break;
 							}
 						}
 					}
@@ -157,6 +157,11 @@ float Cell::get_dynamic(float time)
 	return d;
 }
 
+gene* Cell::get_new_gene()
+{
+	return gene_mutant_cuda(g,DEFAULT_D_DATA);
+}
+
 void Env::randomlise()
 {
 	float* r = new float[size * size * channel];
@@ -169,7 +174,7 @@ void Env::randomlise()
 void Cells::set_gene_belong(int x, int y, Cell* c)
 {
 	int index = (y * size + x) * GENE_PLACE_NUM;
-	for (int i = index; i < index + 9; i++) {
+	for (int i = index; i < index + GENE_PLACE_NUM; i++) {
 		if (gene_belong[i] == nullptr) {
 			gene_belong[i] = c;
 		}
@@ -178,7 +183,7 @@ void Cells::set_gene_belong(int x, int y, Cell* c)
 
 void Cells::generate_gene_belong(float r)
 {
-	memset((void*)gene_belong, 0, sizeof(gene_belong));//不可读数据不加锁
+	memset((void*)gene_belong, 0, sizeof(Cell**) * size * size * GENE_PLACE_NUM);//不可读数据不加锁
 	for (auto cell : cell_group) {
 		cell->mark_territory(r);
 	}
@@ -186,6 +191,8 @@ void Cells::generate_gene_belong(float r)
 
 void Cells::generate_g_mask(float r)
 {
+	cv::Mat kernel(size, size, CV_8UC3);
+	//show_data(kernel, 1, size, gene_mask);
 	Cell** g_belong = new Cell * [env_length * GENE_PLACE_NUM]();
 	gene** g_mask = new gene * [env_length];
 	for (auto cell : cell_group) {
@@ -193,12 +200,14 @@ void Cells::generate_g_mask(float r)
 	}
 	nearest_detect(g_belong, size, g_mask);
 	delete[] g_belong;
+	//show_data(kernel, 1, size, g_mask);
 	for (int i = 0; i < env_length; i++) {
-		if ((gene_mask[i] == nullptr)!=(g_mask[i]==nullptr)) {
+		if ((gene_mask[i] == DEFAULT_GENE)!=(g_mask[i]==DEFAULT_GENE)) {
 			g_mask[i] = gene_mask[i];
 		}
-		else g_mask[i] = nullptr;
+		else g_mask[i] = DEFAULT_GENE;
 	}
+	//show_data(kernel, 1, size, g_mask);
 	delete[] generate_mask;
 	generate_mask = g_mask;
 }
@@ -248,7 +257,7 @@ void Cells::generate_dynamic(float time)
 void Cells::divide_cell(float* data_b)
 {
 	for (int i = 0; i < size * size; i++) {
-		if (generate_mask[i] != nullptr) {
+		if (generate_mask[i] != DEFAULT_GENE) {
 			if (data_b[i]>0) {
 				gene* new_gene;
 				if (randf(0, 1) < d_data.mutant_prob) {
@@ -271,25 +280,26 @@ void Cells::divide_cell(float* data_b)
 void Cells::cell_die(float* data_d)
 {
 	int index = 0;
-	for (auto cell = cell_group.begin(); cell != cell_group.end();) {
-		int id = (*cell)->X() + size * (*cell)->Y();
+	for (int i = 0; i <cell_group.size(); i++) {
+		int id = cell_group[i]->X() + size * cell_group[i]->Y();
 		if (data_d[id] > 0) {
-			reference_count[(*cell)->get_gene()]--;
-			if (reference_count[(*cell)->get_gene()] <= 0) {
-				reference_count.erase((*cell)->get_gene());
-				if ((*cell)->get_gene() != DEFAULT_GENE) {
-					delete (*cell)->get_gene();
+			reference_count[cell_group[i]->get_gene()]--;
+			if (reference_count[cell_group[i]->get_gene()] <= 0) {
+				reference_count.erase(cell_group[i]->get_gene());
+				if (cell_group[i]->get_gene() != DEFAULT_GENE) {
+					gene* g = cell_group[i]->get_gene();
+					g->~gene();
+					cudaFree(g);
 				}
 			}
-			Cell* cp = *cell;
-			cell = cell_group.erase(std::remove(cell_group.begin(), cell_group.end(), cp), cell_group.end());
-			delete cp;
+			delete cell_group[i];
 			data_update_msg();
 		}
 		else {
-			cell++;
+			cell_group[index++] = cell_group[i];
 		}
 	}
+	cell_group.resize(index);
 }
 
 void Cells::step(float* g_data_b,float* g_data_d)
@@ -305,7 +315,7 @@ void Cells::step(float* g_data_b,float* g_data_d)
 		delete[] data_b;
 		delete[] data_d;
 	}
-	if (need_update) {
+	if (need_update) {//有问题
 		generate_gene_belong(CELL_BELONG_RADIUS);
 		generate_gene_mask();
 		generate_g_mask(CELL_BELONG_RADIUS);

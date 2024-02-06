@@ -9,9 +9,9 @@ DL 2
 #CELL_BELONG_RADIUS细胞影响的半径
 CBR 5
 #ENV_SIZE环境大小
-ES 300
+ES 100
 #KERNEL_LENGTH卷积核半径
-KL 5
+KL 10
 #CHANNEL通道数
 C 3
 #DELTA_T时间步长
@@ -21,7 +21,7 @@ DGW 0.333 0.333 0.333
 #D_GENE_FCL_MATRIX默认基因的“矩阵”
 DGFM 1 0.1 0.1 0.35  0.1  0.35  0.2  0  0.8
 #D_G_STEP_AP_MEAN默认基因的迭代函数的均值
-DGSAM 0.3  0.7 0.5
+DGSAM 0.1  0.7 0.5
 #D_G_BORN_AP_MEAN默认基因的出生函数的均值
 DGBAM 0.1  0.3  0.6
 #D_G_DEATH_AP_MEAN默认基因的死亡函数的均值
@@ -37,6 +37,6 @@ DGDA 1  0.5
 #D_G_DYNAMIC_PHI默认基因的动力相位
 DGDP 0  1
 #D_G_KERNEL_AP_MEAN默认基因卷积核生成均值
-DGKAM 0.1  0.3  0.6
+DGKAM 0.2  0.5  0.8
 #默认基因卷积核生成标准差
 DGKAS 0.04  0.03  0.02 

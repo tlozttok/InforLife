@@ -31,6 +31,10 @@ inline float cut(float x) {
 	else return x;
 }
 
+__device__ inline float sigmoid_g(float x) {
+	return 1 / (1 + pow(M_E, -3 * (x - 0.5)));
+}
+
 inline float sigmoid(float x) {
 	return 1 / (1 + pow(M_E, -3 * (x - 0.5)));
 }
