@@ -91,7 +91,7 @@ void gene::generate_kernels()
 gene::gene() {
 	id = 0;
 	k_length = KERNEL_LENGTH;
-	int l = (k_length * 2 + 1) * (k_length * 2 + 1);
+	int l = (k_length * 2 + 1) * (k_length * 2 + 1) * CHANNEL;
 	channel = CHANNEL;
 	cudaMallocManaged((void**)&conv_kernel, sizeof(float) * l);
 	cudaMallocManaged((void**)&kernel_sum, sizeof(float) * channel);
@@ -118,6 +118,7 @@ gene::gene() {
 	operator delete(c_d_data);
 	step.means[0] = 0.5;
 	limit = randf(0,1);
+	base = -1;
 }
 
 gene::~gene()

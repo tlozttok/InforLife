@@ -24,10 +24,29 @@ void show_kernel(gene* gene) {
 	cv::waitKey(0);
 }
 
+void show_env(Env& e)
+{
+	cv::Mat image(ENV_SIZE, ENV_SIZE, CV_8UC3);
+	e.get_data_img(image);
+	cv::Mat large(700, 700, CV_8UC3);
+	cv::namedWindow("Image", cv::WINDOW_NORMAL);
+	cv::resizeWindow("Image", 700, 700);
+	cv::resize(image, large, cv::Size(700, 700), 0, 0, cv::INTER_NEAREST);
+	cv::imshow("Image", large);
+	cv::waitKey(1);
+}
+
+void show_cells(Cells& c)
+{
+	cv::Mat image(ENV_SIZE*5, ENV_SIZE*5, CV_8UC3, cv::Scalar(0,0,0));
+	c.draw_cells(image, ENV_SIZE*5);
+	cv::imshow("Cells",image);
+	cv::waitKey(1);
+}
 
 int main(int argc, char* argv[])
 {
-	//srand(56745);
+	srand(56745);
 	cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
 	read_config("E:\\code\\c++\\InforLife\\config.txt");
 	cout << "start" << endl;
@@ -45,22 +64,17 @@ int main(int argc, char* argv[])
 	cout << "first cell init done" << endl;
 	cell_group.add_cell(first);
 	cout << "add cell done" << endl;
-	//env.randomlise();
+	env.randomlise();
 	int i=1;
 	while (i != 0) {
+		cout << i << endl;
 		cell_group.step(env.get_data_b(), env.get_data_d());
 		cell_group.generate_dynamic(env.get_time());
 		cout << "cell_group steped" << endl;
 		env.step();
 		cout << "env steped" << endl;
-		cv::Mat image(ENV_SIZE, ENV_SIZE, CV_8UC3);
-		env.get_data_img(image);
-		cv::Mat large(700, 700, CV_8UC3);
-		cv::namedWindow("Image", cv::WINDOW_NORMAL);
-		cv::resizeWindow("Image", 700, 700);
-		cv::resize(image, large, cv::Size(700, 700), 0, 0, cv::INTER_NEAREST);
-		cv::imshow("Image", large);
-		cv::waitKey(1);
+		show_env(env);
+		//show_cells(cell_group);
 		i++;
 	}
 	return 0;

@@ -106,12 +106,13 @@ __global__ void step_compute(
 			//printf("\tr_data:%f\t%f\t%f", (buffer_mat_r + channel * i)[0], (buffer_mat_r + channel * i)[1], (buffer_mat_r + channel * i)[2]);
 			respond(buffer_mat_r + channel * i, channel, &(g->step));//得到结果
 			//printf("\tr_data:%f\t%f\t%f", (buffer_mat_r + channel * i)[0], (buffer_mat_r + channel * i)[1], (buffer_mat_r + channel * i)[2]);
-			if (dynamic[i] != 0.0f) {
-				printf("\tid:%d,d:%f", i, dynamic[i]);
-			}
+			//if (dynamic[i] != 0.0f) {
+			//	printf("\tid:%d,d:%f", i, dynamic[i]);
+			//}
 			for (int c = 0; c < channel; c++) {
 				//n_data[i + c * num] = sigmoid_g(data[i + c * num]+(buffer_mat_r + channel * i)[c] * delta_t + dynamic[i]);
-				n_data[i + c * num] = __saturatef(data[i + c * num] + (buffer_mat_r + channel * i)[c] * delta_t + dynamic[i]);
+				//n_data[i + c * num] = __saturatef(data[i + c * num] + (buffer_mat_r + channel * i)[c] * delta_t + dynamic[i]);
+				n_data[i + c * num] = data[i + c * num] + ((buffer_mat_r + channel * i)[c] - (g->base)) * delta_t + dynamic[i];
 			}
 
 			if (action_mask[i]) {
@@ -217,7 +218,7 @@ void Env::get_data_img(cv::Mat mat)
 		int id = 0;
 		for (int col = 0; col < size; col++) {
 			for (int r = 0; r < size; r++) {
-				int t = int(data[i] * 255);
+				int t = int(data[i] * 255) %255;
 				*(data_ptr + col * s0 + r * s1 + c) = t;
 				i++;
 			}

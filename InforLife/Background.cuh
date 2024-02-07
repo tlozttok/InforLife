@@ -35,7 +35,7 @@ using std::rand;
 float randf(float min, float max);
 
 static std::random_device rd;
-static std::mt19937 random_gen(rd());
+static std::mt19937 random_gen(100);
 
 
 struct ActionPair
@@ -72,6 +72,7 @@ struct gene
 	ActionPair born;
 	ActionPair death;
 	float limit;
+	float base;
 	DynamicData d_data;
 	gene();
 	void generate_kernels();
@@ -124,7 +125,7 @@ private:
 	divide_data d_data;
 	map<gene*, int> reference_count;
 	//辅助函数：
-
+	
 	void generate_gene_belong(float r);
 	//r应当和gene_belong的一样，在生成genemask后再调用
 	void generate_g_mask(float r);
@@ -143,6 +144,7 @@ public:
 	Cells(int size,int channel);
 	~Cells();
 	void add_cell(Cell* c) { cell_group.push_back(c); reference_count[c->get_gene()]++; };
+	void draw_cells(cv::Mat mat, int mat_size);
 	//数据获取函数：
 
 	gene** get_gene_mask() { return gene_mask; };

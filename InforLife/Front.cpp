@@ -71,6 +71,7 @@ void gene_mutant(const gene* parent, gene* n_gene, float single_prob, std::norma
 	ActionPair_mutant(parent->step, &(n_gene->step),single_prob, d);
 	Dynamic_mutant(parent->d_data, &(n_gene->d_data), single_prob, d);
 	n_gene->limit = mutant(parent->limit, single_prob, d);
+	n_gene->base = mutant(parent->base, single_prob, d);
 	n_gene->id = rand();
 	for (int c = 0; c < parent->channel; c++) {
 		ActionPair_mutant(parent->conv_kernel_generater[c], &(n_gene->conv_kernel_generater[c]), single_prob, d);
@@ -178,6 +179,13 @@ void Cells::set_gene_belong(int x, int y, Cell* c)
 		if (gene_belong[i] == nullptr) {
 			gene_belong[i] = c;
 		}
+	}
+}
+
+void Cells::draw_cells(cv::Mat mat ,int mat_size)
+{
+	for (auto cell : cell_group) {
+		cv::circle(mat, cv::Point(cell->X()/float(size)* mat_size, cell->Y()/float(size)* mat_size), mat_size /(2*size)+1, cv::Scalar(255, 255, 255), -1);
 	}
 }
 
