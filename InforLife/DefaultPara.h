@@ -1,4 +1,8 @@
 #pragma once
+#include <iostream>
+#include <fstream>
+
+using std::ofstream;
 
 extern int ACTION_PAIR_NUM;
 extern int STEP_ACTION_PAIR_NUM;
@@ -24,3 +28,6 @@ extern float* D_G_DYNAMIC_A;
 extern float* D_G_DYNAMIC_PHI;
 extern float* D_G_KERNEL_AP_MEAN;
 extern float* D_G_KERNEL_AP_STD;
+extern float D_G_BASE;
+extern float D_G_BASE_K;
+extern ofstream recorder;

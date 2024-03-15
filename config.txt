@@ -1,42 +1,46 @@
 #ACTION_PAIR_NUM出生、死亡函数的高斯个数
-APN 3
+APN 1
 #STEP_ACTION_PAIR_NUM迭代函数的高斯个数
-SAPN 1
+SAPN 2
 #KERNEL_PAIR_NUM卷积核高斯个数
-KPN 3
+KPN 2
 #DYNAMIC_LEVEL细胞动力阶数
 DL 2
 #CELL_BELONG_RADIUS细胞影响的半径
-CBR 10
+CBR 50
 #ENV_SIZE环境大小
-ES 100
+ES 1000
 #KERNEL_LENGTH卷积核半径
-KL 10
+KL 25
 #CHANNEL通道数
 C 3
 #DELTA_T时间步长
-DT 0.1
+DT 0.01
 #D_GENE_WEIGHT默认基因的“权重”
 DGW 0.333 0.333 0.333
 #D_GENE_FCL_MATRIX默认基因的“矩阵”
 DGFM 1 0.1 0.1 0.35  0.1  0.35  0.2  0  0.8
 #D_G_STEP_AP_MEAN默认基因的迭代函数的均值
-DGSAM 0.1  0.7 0.5
+DGSAM 0.2  0.4
 #D_G_BORN_AP_MEAN默认基因的出生函数的均值
-DGBAM 0.1  0.3  0.6
+DGBAM 0.3 0.8
 #D_G_DEATH_AP_MEAN默认基因的死亡函数的均值
-DGDAM 0.25  0.5  0.7
+DGDAM 0.55  1.0 
 #D_G_STEP_AP_STD默认基因的迭代函数的标准差
-DGSAS 0.07  0.03 -0.09
+DGSAS 0.07  -0.09
 #D_G_BORN_AP_STD默认基因的出生函数的标准差
-DGBAS 0.02  0.04  0.02
+DGBAS 0.05 0.02
 #D_G_DEATH_AP_STD默认基因的死亡函数的标准差
-DGDAS 0.04  0.02  0.04
+DGDAS 0.03  0.02
 #D_G_DYNAMIC_A默认基因的动力的幅度
-DGDA 1  0.5
+DGDA 20  10
 #D_G_DYNAMIC_PHI默认基因的动力相位
 DGDP 0  1
 #D_G_KERNEL_AP_MEAN默认基因卷积核生成均值
-DGKAM 0.2  0.5  0.8
+DGKAM 0.2   0.8
 #默认基因卷积核生成标准差
-DGKAS 0.04  0.03  0.02 
+DGKAS 0.04  0.02 
+#D_G_BASE 基准回复速度
+DGB 0.4
+#D_G_BASE_K 基准回复速度过渡斜率
+DGBK 5

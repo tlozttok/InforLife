@@ -38,15 +38,30 @@ void show_env(Env& e)
 
 void show_cells(Cells& c)
 {
-	cv::Mat image(ENV_SIZE*5, ENV_SIZE*5, CV_8UC3, cv::Scalar(0,0,0));
-	c.draw_cells(image, ENV_SIZE*5);
-	cv::imshow("Cells",image);
+	cv::Mat image(700, 700, CV_8UC3, cv::Scalar(0,0,0));
+	c.draw_cells(image, 700);
+	cv::imshow("Cells", image);
 	cv::waitKey(1);
+}
+
+void record_para(ofstream& file)
+{
+	file.write(reinterpret_cast<char*>(&ACTION_PAIR_NUM), sizeof(int));
+	file.write(reinterpret_cast<char*>(&STEP_ACTION_PAIR_NUM), sizeof(int));
+	file.write(reinterpret_cast<char*>(&KERNEL_PAIR_NUM), sizeof(int));
+	file.write(reinterpret_cast<char*>(&DYNAMIC_LEVEL), sizeof(int));
+	file.write(reinterpret_cast<char*>(&CELL_BELONG_RADIUS), sizeof(int));
+	file.write(reinterpret_cast<char*>(&ENV_SIZE), sizeof(int));
+	file.write(reinterpret_cast<char*>(&KERNEL_LENGTH), sizeof(int));
+	file.write(reinterpret_cast<char*>(&CHANNEL), sizeof(int));
+	file.write(reinterpret_cast<char*>(&DELTA_T), sizeof(int));
+	//file.write(reinterpret_cast<char*>(&GENE_PLACE_NUM), sizeof(int));
+
 }
 
 int main(int argc, char* argv[])
 {
-	srand(56745);
+	srand(432456);
 	cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
 	read_config("E:\\code\\c++\\InforLife\\config.txt");
 	cout << "start" << endl;
@@ -55,8 +70,9 @@ int main(int argc, char* argv[])
 	Env env = Env(ENV_SIZE, CHANNEL, &cell_group);
 	cout << "env init done" << endl;
 	init_default_gene();
+	DEFAULT_GENE->Serialize(recorder);
 
-	//show_kernel(DEFAULT_GENE);
+	show_kernel(DEFAULT_GENE);
 
 	cout << "default_gene init done" << endl;
 	Cell init_cell = Cell(45, 45, &cell_group, DEFAULT_GENE);
@@ -64,7 +80,7 @@ int main(int argc, char* argv[])
 	cout << "first cell init done" << endl;
 	cell_group.add_cell(first);
 	cout << "add cell done" << endl;
-	env.randomlise();
+	//env.randomlise();
 	int i=1;
 	while (i != 0) {
 		cout << i << endl;
@@ -74,9 +90,11 @@ int main(int argc, char* argv[])
 		env.step();
 		cout << "env steped" << endl;
 		show_env(env);
-		//show_cells(cell_group);
+		show_cells(cell_group);
 		i++;
+		recorder.flush();
 	}
+	recorder.close();
 	return 0;
 }
 
@@ -202,6 +220,12 @@ void set_config(std::string key, std::istringstream& iss) {
 		for (int i = 0; i < KERNEL_PAIR_NUM; i++) {
 			iss >> D_G_KERNEL_AP_STD[i];
 		}
+	}
+	else if (key == "DGB") {
+			iss >> D_G_BASE_K;
+	}
+	else if (key == "DGBK") {
+			iss >> D_G_BASE;
 	}
 }
 

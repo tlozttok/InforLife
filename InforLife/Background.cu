@@ -45,7 +45,7 @@ __device__ void conv(float* data, float* kernel, float* sum, int k_size, int cha
 		}
 		float s = sum[c];
 		result[c] = r / sum[c];
-		//printf("\tc_r:%f", result[c]);
+		////printf("\tc_r:%f", result[c]);
 	}
 }
 
@@ -92,27 +92,30 @@ __global__ void step_compute(
 	int id = blockIdx.x * blockDim.x + threadIdx.x;
 	int num = size * size;
 	int amount = int(num / blockDim.x + 1);
-	for (int i = id * amount; i < (id+1) * amount; i++) {
+	for (int i = id; i<num; i+=blockDim.x*gridDim.x) {
 		if (i < num) {
-			//printf("\ni:%d", i);
+			////printf("\ni:%d", i);
 			int3 pos = offset2pos(i, size);
 			gene* g = gene_mask[i];
 
 			conv(data, g->conv_kernel, g->kernel_sum, g->k_length, channel, pos.x, pos.y, size, buffer_conv_r+channel*i);//卷积
-			//printf("\tr_data:%f\t%f\t%f", (buffer_conv_r + channel * i)[0], (buffer_conv_r + channel * i)[1], (buffer_conv_r + channel * i)[2]);
+			////printf("\tr_data:%f\t%f\t%f", (buffer_conv_r + channel * i)[0], (buffer_conv_r + channel * i)[1], (buffer_conv_r + channel * i)[2]);
 			activate(buffer_conv_r + channel * i, channel, sin_af);//激活
-			//printf("\tr_data:%f\t%f\t%f", (buffer_conv_r + channel * i)[0], (buffer_conv_r + channel * i)[1], (buffer_conv_r + channel * i)[2]);
+			////printf("\tr_data:%f\t%f\t%f", (buffer_conv_r + channel * i)[0], (buffer_conv_r + channel * i)[1], (buffer_conv_r + channel * i)[2]);
 			matmul(buffer_conv_r + channel * i, g->FCL_matrix, channel, channel, buffer_mat_r+channel * i);//矩阵乘法
-			//printf("\tr_data:%f\t%f\t%f", (buffer_mat_r + channel * i)[0], (buffer_mat_r + channel * i)[1], (buffer_mat_r + channel * i)[2]);
+			////printf("\tr_data:%f\t%f\t%f", (buffer_mat_r + channel * i)[0], (buffer_mat_r + channel * i)[1], (buffer_mat_r + channel * i)[2]);
 			respond(buffer_mat_r + channel * i, channel, &(g->step));//得到结果
-			//printf("\tr_data:%f\t%f\t%f", (buffer_mat_r + channel * i)[0], (buffer_mat_r + channel * i)[1], (buffer_mat_r + channel * i)[2]);
+			////printf("\tr_data:%f\t%f\t%f", (buffer_mat_r + channel * i)[0], (buffer_mat_r + channel * i)[1], (buffer_mat_r + channel * i)[2]);
 			//if (dynamic[i] != 0.0f) {
-			//	printf("\tid:%d,d:%f", i, dynamic[i]);
+			//	//printf("\tid:%d,d:%f", i, dynamic[i]);
 			//}
 			for (int c = 0; c < channel; c++) {
 				//n_data[i + c * num] = sigmoid_g(data[i + c * num]+(buffer_mat_r + channel * i)[c] * delta_t + dynamic[i]);
 				//n_data[i + c * num] = __saturatef(data[i + c * num] + (buffer_mat_r + channel * i)[c] * delta_t + dynamic[i]);
-				n_data[i + c * num] = data[i + c * num] + ((buffer_mat_r + channel * i)[c] - (g->base)) * delta_t + dynamic[i];
+				float delta = ((buffer_mat_r + channel * i)[c] + get_base(data[i + c * num], g->base, g->base_k)) * delta_t;
+				//printf("\tdelta:%f", delta);
+				n_data[i + c * num] = data[i + c * num] + delta + dynamic[i];
+				//printf("\tdata:%f\n", n_data[i + c * num]);
 			}
 
 			if (action_mask[i]) {
@@ -175,12 +178,14 @@ void Env::step()
 		cudaMemcpy(action_mask, actionmask, sizeof(bool) * size * size, cudaMemcpyDefault);
 		cell_territory_lock.unlock();
 	}
+	//printf("\t1\n");
 	if (dynamic_lock.try_lock())//尝试读取数据
 	{
 		float* d = cells->get_dynamic();
 		cudaMemcpy(dynamic, d, sizeof(float) * size * size, cudaMemcpyDefault);
 		dynamic_lock.unlock();
 	}
+	//printf("\t2\n");
 	float* ndata = 0;//旧数据保留以供其他线程读取
 	float* n_data_b = 0;
 	float* n_data_d = 0;
@@ -191,19 +196,33 @@ void Env::step()
 	float* buffer_m = 0;
 	cudaStatus = cudaMalloc((void**)&buffer_c, sizeof(float) * channel * size * size);
 	cudaStatus = cudaMalloc((void**)&buffer_m, sizeof(float) * channel * size * size);
-	step_compute<<<32,64>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel, buffer_c, buffer_m);
+	//printf("\t3\n");
+	step_compute<<<512,1024>>>(data, gene_mask, dynamic, delta_t, action_mask, n_data_b, n_data_d, ndata, size, channel, buffer_c, buffer_m);
 	checkCuda(cudaGetLastError());
 	time += delta_t;
 	cudaDeviceSynchronize();
+	//printf("\t4\n");
 	cudaFree(buffer_c);
 	cudaFree(buffer_m);
 	gpu_data_lock.lock();//坚持覆写数据
 	cudaFree(data);
 	cudaFree(data_b);
 	cudaFree(data_d);
+	//printf("\t5\n");
 	data = ndata;
 	data_b = n_data_b;
 	data_d = n_data_d;
+	int length = sizeof(float) * size * size * channel;
+	recorder.write("dt", sizeof(char) * 2);
+	recorder.write(reinterpret_cast<char*>(&length), sizeof(char) * 2);
+	recorder.write(reinterpret_cast<char*>(ndata), sizeof(float) * size * size * channel);
+	length = sizeof(float) * size * size;
+	recorder.write("bd", sizeof(char) * 2);
+	recorder.write(reinterpret_cast<char*>(&length), sizeof(char) * 2);
+	recorder.write(reinterpret_cast<char*>(n_data_b), sizeof(float) * size * size);
+	recorder.write("dd", sizeof(char) * 2);
+	recorder.write(reinterpret_cast<char*>(&length), sizeof(char) * 2);
+	recorder.write(reinterpret_cast<char*>(n_data_d), sizeof(float) * size * size);
 	gpu_data_lock.unlock();
 }
 
@@ -218,7 +237,7 @@ void Env::get_data_img(cv::Mat mat)
 		int id = 0;
 		for (int col = 0; col < size; col++) {
 			for (int r = 0; r < size; r++) {
-				int t = int(data[i] * 255) %255;
+				int t = int(cut(data[i]) * 255) %256;
 				*(data_ptr + col * s0 + r * s1 + c) = t;
 				i++;
 			}

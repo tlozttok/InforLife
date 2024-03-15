@@ -21,6 +21,10 @@ __device__ inline float sin_af(float x) {
 	return sinf(x * M_PI);
 }
 
+__device__ inline float get_base(float x, float base, float k) {
+	return fminf(fmaxf(-k * x, -base), base);
+}
+
 inline float cut(float x) {
 	if (x < 0) {
 		return 0;

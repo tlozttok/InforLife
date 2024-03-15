@@ -46,6 +46,12 @@ ActionPair::ActionPair(int pair_num)
 
 ActionPair::~ActionPair() { cudaFree(means); cudaFree(stds); }
 
+void ActionPair::Serialize(ofstream& file)
+{
+	file.write(reinterpret_cast<char*>(means), sizeof(float) * num);
+	file.write(reinterpret_cast<char*>(stds), sizeof(float) * num);
+}
+
 DynamicData::DynamicData()
 {
 	level = DYNAMIC_LEVEL;
@@ -61,6 +67,12 @@ DynamicData::~DynamicData()
 {
 	cudaFree(A);
 	cudaFree(phi);
+}
+
+void DynamicData::Serialize(ofstream& file)
+{
+	file.write(reinterpret_cast<char*>(A), sizeof(float) * level);
+	file.write(reinterpret_cast<char*>(phi), sizeof(float) * level);
 }
 
 void generate_kernel(int k_length, float* kernel, ActionPair* src, int channel, float* kernel_sum)
@@ -118,7 +130,8 @@ gene::gene() {
 	operator delete(c_d_data);
 	step.means[0] = 0.5;
 	limit = randf(0,1);
-	base = -1;
+	base = D_G_BASE;
+	base_k = D_G_BASE_K;
 }
 
 gene::~gene()
@@ -131,6 +144,25 @@ gene::~gene()
 		conv_kernel_generater[c].~ActionPair();
 	}
 	cudaFree(conv_kernel_generater);
+}
+
+void gene::Serialize(ofstream& file)
+{
+	int l = (k_length * 2 + 1) * (k_length * 2 + 1) * channel;
+	file.write(reinterpret_cast<char*>(&id), sizeof(int));
+	file.write(reinterpret_cast<char*>(conv_kernel), sizeof(float)*l);
+	file.write(reinterpret_cast<char*>(FCL_matrix), sizeof(float)*channel*channel);
+	file.write(reinterpret_cast<char*>(weight), sizeof(float)*channel);
+	for (int i = 0; i < channel; i++) {
+		conv_kernel_generater[i].Serialize(file);
+	}
+	step.Serialize(file);
+	born.Serialize(file);
+	death.Serialize(file);
+	file.write(reinterpret_cast<char*>(&limit), sizeof(float));
+	file.write(reinterpret_cast<char*>(&base), sizeof(float));
+	file.write(reinterpret_cast<char*>(&base_k), sizeof(float));
+	d_data.Serialize(file);
 }
 
 Cell::Cell(int x, int y, Cells* e, gene* g) :x(x), y(y), group(e), g(g)
@@ -148,6 +180,7 @@ Cells::Cells(int size, int channel) : size(size), channel(channel) {
 	cell_group = vector<Cell*>();
 	cell_group.reserve(32);
 	need_update = true;
+	d_data = DEFAULT_D_DATA;
 };
 
 Cells::~Cells()

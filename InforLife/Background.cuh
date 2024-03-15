@@ -15,7 +15,7 @@
 #ifndef checkCuda
 #define checkCuda(err)  __checkCudaErrors (err, __FILE__, __LINE__)
 
-
+using std::ofstream;
 
 inline void __checkCudaErrors(cudaError_t err, const char* file, const int line)
 {
@@ -46,6 +46,7 @@ struct ActionPair
 	ActionPair();
 	ActionPair(int pair_num);
 	~ActionPair();
+	void Serialize(ofstream& file);
 };
 
 struct DynamicData
@@ -56,6 +57,7 @@ struct DynamicData
 	int level;
 	DynamicData();
 	~DynamicData();
+	void Serialize(ofstream& file);
 };
 
 struct gene
@@ -73,10 +75,12 @@ struct gene
 	ActionPair death;
 	float limit;
 	float base;
+	float base_k;
 	DynamicData d_data;
 	gene();
 	void generate_kernels();
 	~gene();
+	void Serialize(ofstream& file);
 };
 
 
@@ -89,7 +93,7 @@ struct divide_data
 	float drift_std;
 };
 
-constexpr divide_data DEFAULT_D_DATA = { 0.1,0.2,0.4,0.0,0.01 };
+constexpr divide_data DEFAULT_D_DATA = { 0.1,0.05,0.4,0.0,0.005 };
 
 class Cells;
 
@@ -101,7 +105,9 @@ private:
 	Cells* group;//可以改成在函数里传递
 	gene* g;
 public:
+	int id;
 	Cell(int x, int y, Cells* e, gene* g);
+	void set_id(int cell_id) { id = cell_id; };
 	void mark_territory(float r);
 	void mark_territory(float r, Cell** gene_belong, int size);
 	float get_dynamic(float time);
@@ -110,11 +116,13 @@ public:
 	gene* get_gene() { return g; };
 	gene* get_new_gene();
 	~Cell() {};
+	void Serialize(ofstream& file);
 };
 
 class Cells
 {
 private:
+	long last_id = 0;
 	Cell** gene_belong;//顺序[h,w,place_num]
 	gene** gene_mask;//可被其他线程读
 	gene** generate_mask;
